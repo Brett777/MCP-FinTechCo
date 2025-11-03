@@ -74,46 +74,21 @@ async def get_city_coordinates(city_name: str) -> tuple[float, float, str]:
         return latitude, longitude, full_location
 
 
-@mcp.tool()
-async def get_city_weather(city: str) -> dict:
+async def get_city_weather_impl(city: str) -> dict:
     """
-    Get current weather information for a specified city.
+    Implementation of city weather retrieval.
 
-    This tool retrieves real-time weather data including temperature, humidity,
-    wind speed, and weather conditions using the Open-Meteo API.
+    Get current weather information for a specified city using Open-Meteo API.
 
     Args:
         city: Name of the city (e.g., "New York", "London", "Tokyo")
 
     Returns:
-        Dictionary containing:
-        - location: Full location name (city, state/province, country)
-        - latitude: Latitude coordinate
-        - longitude: Longitude coordinate
-        - temperature: Current temperature in Celsius
-        - temperature_fahrenheit: Current temperature in Fahrenheit
-        - humidity: Relative humidity percentage
-        - wind_speed: Wind speed in km/h
-        - weather_code: WMO weather code
-        - conditions: Human-readable weather conditions
+        Dictionary containing weather data
 
     Raises:
         ValueError: If city is not found
         Exception: For API errors or network issues
-
-    Example:
-        >>> await get_city_weather("San Francisco")
-        {
-            "location": "San Francisco, California, United States",
-            "latitude": 37.7749,
-            "longitude": -122.4194,
-            "temperature": 18.5,
-            "temperature_fahrenheit": 65.3,
-            "humidity": 72,
-            "wind_speed": 15.3,
-            "weather_code": 2,
-            "conditions": "Partly cloudy"
-        }
     """
     try:
         # Get coordinates for the city
@@ -193,6 +168,50 @@ async def get_city_weather(city: str) -> dict:
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
         raise Exception(f"An error occurred: {str(e)}")
+
+
+@mcp.tool()
+async def get_city_weather(city: str) -> dict:
+    """
+    Get current weather information for a specified city.
+
+    This tool retrieves real-time weather data including temperature, humidity,
+    wind speed, and weather conditions using the Open-Meteo API.
+
+    Args:
+        city: Name of the city (e.g., "New York", "London", "Tokyo")
+
+    Returns:
+        Dictionary containing:
+        - location: Full location name (city, state/province, country)
+        - latitude: Latitude coordinate
+        - longitude: Longitude coordinate
+        - temperature: Current temperature in Celsius
+        - temperature_fahrenheit: Current temperature in Fahrenheit
+        - humidity: Relative humidity percentage
+        - wind_speed: Wind speed in km/h
+        - weather_code: WMO weather code
+        - conditions: Human-readable weather conditions
+
+    Raises:
+        ValueError: If city is not found
+        Exception: For API errors or network issues
+
+    Example:
+        >>> await get_city_weather("San Francisco")
+        {
+            "location": "San Francisco, California, United States",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "temperature": 18.5,
+            "temperature_fahrenheit": 65.3,
+            "humidity": 72,
+            "wind_speed": 15.3,
+            "weather_code": 2,
+            "conditions": "Partly cloudy"
+        }
+    """
+    return await get_city_weather_impl(city)
 
 
 if __name__ == "__main__":

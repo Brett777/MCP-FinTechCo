@@ -8,7 +8,7 @@ This script tests all available tools and verifies their responses.
 
 import asyncio
 import sys
-from server import get_city_weather, get_city_coordinates
+from server import get_city_weather_impl, get_city_coordinates
 
 
 class TestResults:
@@ -21,12 +21,12 @@ class TestResults:
 
     def add_pass(self, test_name: str):
         self.passed += 1
-        print(f"✓ {test_name}")
+        print(f"[PASS] {test_name}")
 
     def add_fail(self, test_name: str, error: str):
         self.failed += 1
         self.errors.append((test_name, error))
-        print(f"✗ {test_name}: {error}")
+        print(f"[FAIL] {test_name}: {error}")
 
     def print_summary(self):
         total = self.passed + self.failed
@@ -107,7 +107,7 @@ async def test_weather_tool():
 
     for city in test_cities:
         try:
-            weather = await get_city_weather(city)
+            weather = await get_city_weather_impl(city)
 
             # Validate response structure
             required_fields = [
@@ -155,7 +155,7 @@ async def test_weather_tool():
 
     # Test invalid city
     try:
-        await get_city_weather("InvalidCityThatDoesNotExist123")
+        await get_city_weather_impl("InvalidCityThatDoesNotExist123")
         results.add_fail("Invalid city weather", "Should have raised ValueError")
     except ValueError:
         results.add_pass("Invalid city weather")
@@ -179,7 +179,7 @@ async def run_integration_test():
     try:
         # Fetch weather for multiple cities
         for city in cities:
-            weather = await get_city_weather(city)
+            weather = await get_city_weather_impl(city)
             weather_data.append(weather)
 
         # Verify we got data for all cities
