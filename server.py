@@ -222,40 +222,8 @@ async def get_city_weather(city: str) -> dict:
 # ALPHA VANTAGE FINANCIAL DATA TOOLS
 # ============================================================================
 
-@mcp.tool()
-async def get_stock_quote(symbol: str) -> dict:
-    """
-    Get real-time stock quote for a given symbol.
-
-    Retrieves the latest price, volume, and trading information for any
-    global equity (stock or ETF).
-
-    Args:
-        symbol: Stock ticker symbol (e.g., "AAPL", "MSFT", "GOOGL")
-
-    Returns:
-        Dictionary containing:
-        - symbol: Stock ticker symbol
-        - price: Current price
-        - change: Price change
-        - change_percent: Percentage change
-        - volume: Trading volume
-        - latest_trading_day: Most recent trading day
-        - previous_close: Previous closing price
-        - open: Opening price
-        - high: Day's high price
-        - low: Day's low price
-
-    Example:
-        >>> await get_stock_quote("AAPL")
-        {
-            "symbol": "AAPL",
-            "price": 178.50,
-            "change": 2.35,
-            "change_percent": "1.33%",
-            ...
-        }
-    """
+async def get_stock_quote_impl(symbol: str) -> dict:
+    """Implementation of stock quote retrieval."""
     if not ALPHA_VANTAGE_API_KEY:
         raise Exception("ALPHA_VANTAGE_API_KEY not configured in environment")
 
@@ -304,30 +272,44 @@ async def get_stock_quote(symbol: str) -> dict:
 
 
 @mcp.tool()
-async def get_stock_daily(symbol: str, outputsize: str = "compact") -> dict:
+async def get_stock_quote(symbol: str) -> dict:
     """
-    Get daily time series data for a stock.
+    Get real-time stock quote for a given symbol.
 
-    Retrieves daily historical price and volume data.
+    Retrieves the latest price, volume, and trading information for any
+    global equity (stock or ETF).
 
     Args:
-        symbol: Stock ticker symbol (e.g., "AAPL", "MSFT")
-        outputsize: "compact" (latest 100 data points) or "full" (20+ years)
+        symbol: Stock ticker symbol (e.g., "AAPL", "MSFT", "GOOGL")
 
     Returns:
         Dictionary containing:
         - symbol: Stock ticker symbol
-        - last_refreshed: Last update timestamp
-        - time_series: List of daily data points with date, open, high, low, close, volume
+        - price: Current price
+        - change: Price change
+        - change_percent: Percentage change
+        - volume: Trading volume
+        - latest_trading_day: Most recent trading day
+        - previous_close: Previous closing price
+        - open: Opening price
+        - high: Day's high price
+        - low: Day's low price
 
     Example:
-        >>> await get_stock_daily("AAPL", "compact")
+        >>> await get_stock_quote("AAPL")
         {
             "symbol": "AAPL",
-            "last_refreshed": "2025-11-02",
-            "time_series": [{"date": "2025-11-02", "open": 178.20, ...}, ...]
+            "price": 178.50,
+            "change": 2.35,
+            "change_percent": "1.33%",
+            ...
         }
     """
+    return await get_stock_quote_impl(symbol)
+
+
+async def get_stock_daily_impl(symbol: str, outputsize: str = "compact") -> dict:
+    """Implementation of stock daily time series retrieval."""
     if not ALPHA_VANTAGE_API_KEY:
         raise Exception("ALPHA_VANTAGE_API_KEY not configured in environment")
 
@@ -381,23 +363,35 @@ async def get_stock_daily(symbol: str, outputsize: str = "compact") -> dict:
 
 
 @mcp.tool()
-async def get_sma(symbol: str, interval: str = "daily", time_period: int = 20, series_type: str = "close") -> dict:
+async def get_stock_daily(symbol: str, outputsize: str = "compact") -> dict:
     """
-    Get Simple Moving Average (SMA) technical indicator.
+    Get daily time series data for a stock.
+
+    Retrieves daily historical price and volume data.
 
     Args:
-        symbol: Stock ticker symbol
-        interval: Time interval ("daily", "weekly", "monthly", "1min", "5min", "15min", "30min", "60min")
-        time_period: Number of data points (default: 20)
-        series_type: Price type ("close", "open", "high", "low")
+        symbol: Stock ticker symbol (e.g., "AAPL", "MSFT")
+        outputsize: "compact" (latest 100 data points) or "full" (20+ years)
 
     Returns:
-        Dictionary containing SMA values over time
+        Dictionary containing:
+        - symbol: Stock ticker symbol
+        - last_refreshed: Last update timestamp
+        - time_series: List of daily data points with date, open, high, low, close, volume
 
     Example:
-        >>> await get_sma("AAPL", "daily", 20, "close")
-        {"symbol": "AAPL", "indicator": "SMA", "values": [...]}
+        >>> await get_stock_daily("AAPL", "compact")
+        {
+            "symbol": "AAPL",
+            "last_refreshed": "2025-11-02",
+            "time_series": [{"date": "2025-11-02", "open": 178.20, ...}, ...]
+        }
     """
+    return await get_stock_daily_impl(symbol, outputsize)
+
+
+async def get_sma_impl(symbol: str, interval: str = "daily", time_period: int = 20, series_type: str = "close") -> dict:
+    """Implementation of SMA technical indicator retrieval."""
     if not ALPHA_VANTAGE_API_KEY:
         raise Exception("ALPHA_VANTAGE_API_KEY not configured in environment")
 
@@ -451,26 +445,28 @@ async def get_sma(symbol: str, interval: str = "daily", time_period: int = 20, s
 
 
 @mcp.tool()
-async def get_rsi(symbol: str, interval: str = "daily", time_period: int = 14, series_type: str = "close") -> dict:
+async def get_sma(symbol: str, interval: str = "daily", time_period: int = 20, series_type: str = "close") -> dict:
     """
-    Get Relative Strength Index (RSI) technical indicator.
-
-    RSI measures momentum and overbought/oversold conditions (0-100 scale).
-    Values above 70 indicate overbought, below 30 indicate oversold.
+    Get Simple Moving Average (SMA) technical indicator.
 
     Args:
         symbol: Stock ticker symbol
-        interval: Time interval ("daily", "weekly", "monthly", etc.)
-        time_period: Number of data points (default: 14)
+        interval: Time interval ("daily", "weekly", "monthly", "1min", "5min", "15min", "30min", "60min")
+        time_period: Number of data points (default: 20)
         series_type: Price type ("close", "open", "high", "low")
 
     Returns:
-        Dictionary containing RSI values over time
+        Dictionary containing SMA values over time
 
     Example:
-        >>> await get_rsi("AAPL", "daily", 14)
-        {"symbol": "AAPL", "indicator": "RSI", "values": [...]}
+        >>> await get_sma("AAPL", "daily", 20, "close")
+        {"symbol": "AAPL", "indicator": "SMA", "values": [...]}
     """
+    return await get_sma_impl(symbol, interval, time_period, series_type)
+
+
+async def get_rsi_impl(symbol: str, interval: str = "daily", time_period: int = 14, series_type: str = "close") -> dict:
+    """Implementation of RSI technical indicator retrieval."""
     if not ALPHA_VANTAGE_API_KEY:
         raise Exception("ALPHA_VANTAGE_API_KEY not configured in environment")
 
@@ -524,27 +520,31 @@ async def get_rsi(symbol: str, interval: str = "daily", time_period: int = 14, s
 
 
 @mcp.tool()
-async def get_fx_rate(from_currency: str, to_currency: str) -> dict:
+async def get_rsi(symbol: str, interval: str = "daily", time_period: int = 14, series_type: str = "close") -> dict:
     """
-    Get real-time foreign exchange (FX) rate.
+    Get Relative Strength Index (RSI) technical indicator.
+
+    RSI measures momentum and overbought/oversold conditions (0-100 scale).
+    Values above 70 indicate overbought, below 30 indicate oversold.
 
     Args:
-        from_currency: Source currency code (e.g., "USD", "EUR", "GBP")
-        to_currency: Target currency code (e.g., "USD", "EUR", "JPY")
+        symbol: Stock ticker symbol
+        interval: Time interval ("daily", "weekly", "monthly", etc.)
+        time_period: Number of data points (default: 14)
+        series_type: Price type ("close", "open", "high", "low")
 
     Returns:
-        Dictionary containing:
-        - from_currency: Source currency
-        - to_currency: Target currency
-        - exchange_rate: Current exchange rate
-        - last_refreshed: Last update timestamp
-        - bid_price: Bid price
-        - ask_price: Ask price
+        Dictionary containing RSI values over time
 
     Example:
-        >>> await get_fx_rate("USD", "EUR")
-        {"from_currency": "USD", "to_currency": "EUR", "exchange_rate": 0.85, ...}
+        >>> await get_rsi("AAPL", "daily", 14)
+        {"symbol": "AAPL", "indicator": "RSI", "values": [...]}
     """
+    return await get_rsi_impl(symbol, interval, time_period, series_type)
+
+
+async def get_fx_rate_impl(from_currency: str, to_currency: str) -> dict:
+    """Implementation of foreign exchange rate retrieval."""
     if not ALPHA_VANTAGE_API_KEY:
         raise Exception("ALPHA_VANTAGE_API_KEY not configured in environment")
 
@@ -589,21 +589,32 @@ async def get_fx_rate(from_currency: str, to_currency: str) -> dict:
 
 
 @mcp.tool()
-async def get_crypto_rate(symbol: str, market: str = "USD") -> dict:
+async def get_fx_rate(from_currency: str, to_currency: str) -> dict:
     """
-    Get real-time cryptocurrency exchange rate.
+    Get real-time foreign exchange (FX) rate.
 
     Args:
-        symbol: Cryptocurrency symbol (e.g., "BTC", "ETH", "DOGE")
-        market: Market currency (default: "USD", can be "EUR", "CNY", etc.)
+        from_currency: Source currency code (e.g., "USD", "EUR", "GBP")
+        to_currency: Target currency code (e.g., "USD", "EUR", "JPY")
 
     Returns:
-        Dictionary containing cryptocurrency exchange rate and metadata
+        Dictionary containing:
+        - from_currency: Source currency
+        - to_currency: Target currency
+        - exchange_rate: Current exchange rate
+        - last_refreshed: Last update timestamp
+        - bid_price: Bid price
+        - ask_price: Ask price
 
     Example:
-        >>> await get_crypto_rate("BTC", "USD")
-        {"symbol": "BTC", "market": "USD", "price": 45000.50, ...}
+        >>> await get_fx_rate("USD", "EUR")
+        {"from_currency": "USD", "to_currency": "EUR", "exchange_rate": 0.85, ...}
     """
+    return await get_fx_rate_impl(from_currency, to_currency)
+
+
+async def get_crypto_rate_impl(symbol: str, market: str = "USD") -> dict:
+    """Implementation of cryptocurrency exchange rate retrieval."""
     if not ALPHA_VANTAGE_API_KEY:
         raise Exception("ALPHA_VANTAGE_API_KEY not configured in environment")
 
@@ -644,6 +655,25 @@ async def get_crypto_rate(symbol: str, market: str = "USD") -> dict:
     except Exception as e:
         logger.error(f"Error fetching crypto rate: {e}")
         raise
+
+
+@mcp.tool()
+async def get_crypto_rate(symbol: str, market: str = "USD") -> dict:
+    """
+    Get real-time cryptocurrency exchange rate.
+
+    Args:
+        symbol: Cryptocurrency symbol (e.g., "BTC", "ETH", "DOGE")
+        market: Market currency (default: "USD", can be "EUR", "CNY", etc.)
+
+    Returns:
+        Dictionary containing cryptocurrency exchange rate and metadata
+
+    Example:
+        >>> await get_crypto_rate("BTC", "USD")
+        {"symbol": "BTC", "market": "USD", "price": 45000.50, ...}
+    """
+    return await get_crypto_rate_impl(symbol, market)
 
 
 if __name__ == "__main__":

@@ -254,15 +254,30 @@ The server uses environment variables for configuration. See `.env.sample` for a
 
 ### Adding New Financial Tools
 
-1. Define an async function with proper type hints
-2. Add the `@mcp.tool()` decorator
-3. Include comprehensive docstring with parameters and examples
+All financial tools follow a consistent pattern separating implementation from the MCP wrapper. This allows direct testing through `chat_test.py` while maintaining MCP server compatibility.
+
+**Implementation Pattern:**
+
+1. Create an `async` implementation function with `_impl` suffix
+2. Create an MCP tool wrapper using `@mcp.tool()` decorator that calls the implementation
+3. Include comprehensive docstrings with parameters and examples
 4. Implement error handling and logging
 5. Update this README with tool documentation
-6. Add tests in `test_client.py`
+6. Update `chat_test.py` to import and use the `_impl` function
+7. Add tests in `test_client.py`
 
 **Example:**
 ```python
+# Step 1: Implementation function (directly callable for testing)
+async def get_company_overview_impl(symbol: str) -> dict:
+    """Implementation of company overview retrieval."""
+    if not ALPHA_VANTAGE_API_KEY:
+        raise Exception("ALPHA_VANTAGE_API_KEY not configured")
+
+    # Implementation logic here
+    return {"symbol": symbol, "data": ...}
+
+# Step 2: MCP tool wrapper (exposed to MCP clients)
 @mcp.tool()
 async def get_company_overview(symbol: str) -> dict:
     """
@@ -274,9 +289,14 @@ async def get_company_overview(symbol: str) -> dict:
     Returns:
         Company overview including sector, market cap, P/E ratio, etc.
     """
-    # Implementation here
-    return {"symbol": symbol, "data": ...}
+    return await get_company_overview_impl(symbol)
 ```
+
+**Why This Pattern?**
+- The `@mcp.tool()` decorator creates `FunctionTool` objects that can't be called directly
+- Separating implementation allows `chat_test.py` to execute tools for interactive testing
+- MCP server exposes the decorated versions to clients
+- Same business logic, two access patterns
 
 ### Testing
 

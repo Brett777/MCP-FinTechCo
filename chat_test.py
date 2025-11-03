@@ -30,12 +30,12 @@ from anthropic import Anthropic
 # Local MCP server imports for direct tool execution
 from server import (
     get_city_weather_impl,
-    get_stock_quote,
-    get_stock_daily,
-    get_sma,
-    get_rsi,
-    get_fx_rate,
-    get_crypto_rate
+    get_stock_quote_impl,
+    get_stock_daily_impl,
+    get_sma_impl,
+    get_rsi_impl,
+    get_fx_rate_impl,
+    get_crypto_rate_impl
 )
 
 # Load environment variables
@@ -235,7 +235,7 @@ and integrates real-time market data into the conversation.
         try:
             # Execute the appropriate tool
             if tool_name == "get_stock_quote":
-                result = await get_stock_quote(tool_input.get("symbol"))
+                result = await get_stock_quote_impl(tool_input.get("symbol"))
                 table = Table(box=box.SIMPLE, show_header=False, padding=(0, 2))
                 table.add_column("Field", style="cyan bold", width=25)
                 table.add_column("Value", style="white", width=40)
@@ -249,7 +249,7 @@ and integrates real-time market data into the conversation.
                 return result
 
             elif tool_name == "get_stock_daily":
-                result = await get_stock_daily(tool_input.get("symbol"), tool_input.get("outputsize", "compact"))
+                result = await get_stock_daily_impl(tool_input.get("symbol"), tool_input.get("outputsize", "compact"))
                 console.print(f"[green]Symbol:[/green] {result['symbol']}")
                 console.print(f"[green]Last Refreshed:[/green] {result['last_refreshed']}")
                 console.print(f"[green]Data Points:[/green] {result['total_points']}")
@@ -259,7 +259,7 @@ and integrates real-time market data into the conversation.
                 return result
 
             elif tool_name == "get_sma":
-                result = await get_sma(
+                result = await get_sma_impl(
                     tool_input.get("symbol"),
                     tool_input.get("interval", "daily"),
                     tool_input.get("time_period", 20),
@@ -273,7 +273,7 @@ and integrates real-time market data into the conversation.
                 return result
 
             elif tool_name == "get_rsi":
-                result = await get_rsi(
+                result = await get_rsi_impl(
                     tool_input.get("symbol"),
                     tool_input.get("interval", "daily"),
                     tool_input.get("time_period", 14),
@@ -289,7 +289,7 @@ and integrates real-time market data into the conversation.
                 return result
 
             elif tool_name == "get_fx_rate":
-                result = await get_fx_rate(tool_input.get("from_currency"), tool_input.get("to_currency"))
+                result = await get_fx_rate_impl(tool_input.get("from_currency"), tool_input.get("to_currency"))
                 table = Table(box=box.SIMPLE, show_header=False, padding=(0, 2))
                 table.add_column("Field", style="cyan bold", width=25)
                 table.add_column("Value", style="white", width=40)
@@ -301,7 +301,7 @@ and integrates real-time market data into the conversation.
                 return result
 
             elif tool_name == "get_crypto_rate":
-                result = await get_crypto_rate(tool_input.get("symbol"), tool_input.get("market", "USD"))
+                result = await get_crypto_rate_impl(tool_input.get("symbol"), tool_input.get("market", "USD"))
                 table = Table(box=box.SIMPLE, show_header=False, padding=(0, 2))
                 table.add_column("Field", style="cyan bold", width=25)
                 table.add_column("Value", style="white", width=40)
