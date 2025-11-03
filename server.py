@@ -198,4 +198,9 @@ async def get_city_weather(city: str) -> dict:
 if __name__ == "__main__":
     # Run the MCP server
     logger.info(f"Starting {mcp.name} version {mcp.version}")
-    mcp.run()
+
+    # Use SSE transport for network access
+    port = int(os.getenv("MCP_SERVER_PORT", "8000"))
+    logger.info(f"Starting server on port {port} with SSE transport")
+
+    mcp.run(transport="sse", port=port, host="0.0.0.0")
