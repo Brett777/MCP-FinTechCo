@@ -28,7 +28,15 @@ from rich.text import Text
 from anthropic import Anthropic
 
 # Local MCP server imports for direct tool execution
-from server import get_city_weather_impl
+from server import (
+    get_city_weather_impl,
+    get_stock_quote,
+    get_stock_daily,
+    get_sma,
+    get_rsi,
+    get_fx_rate,
+    get_crypto_rate
+)
 
 # Load environment variables
 load_dotenv()
@@ -54,6 +62,91 @@ class MCPChatInterface:
         # Define available MCP tools
         self.mcp_tools = [
             {
+                "name": "get_stock_quote",
+                "description": "Get real-time stock quote for any symbol including price, volume, change, and trading data.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "symbol": {
+                            "type": "string",
+                            "description": "Stock ticker symbol (e.g., 'AAPL', 'MSFT', 'GOOGL', 'TSLA')"
+                        }
+                    },
+                    "required": ["symbol"]
+                }
+            },
+            {
+                "name": "get_stock_daily",
+                "description": "Get daily time series data for a stock with OHLCV (Open, High, Low, Close, Volume) values.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "symbol": {
+                            "type": "string",
+                            "description": "Stock ticker symbol"
+                        },
+                        "outputsize": {
+                            "type": "string",
+                            "description": "'compact' (100 days) or 'full' (20+ years)",
+                            "enum": ["compact", "full"]
+                        }
+                    },
+                    "required": ["symbol"]
+                }
+            },
+            {
+                "name": "get_sma",
+                "description": "Get Simple Moving Average (SMA) technical indicator for trend analysis.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "symbol": {"type": "string", "description": "Stock ticker symbol"},
+                        "interval": {"type": "string", "description": "Time interval (daily, weekly, monthly)"},
+                        "time_period": {"type": "integer", "description": "Number of data points (default 20)"},
+                        "series_type": {"type": "string", "description": "Price type (close, open, high, low)"}
+                    },
+                    "required": ["symbol"]
+                }
+            },
+            {
+                "name": "get_rsi",
+                "description": "Get Relative Strength Index (RSI) indicator measuring momentum (0-100, >70 overbought, <30 oversold).",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "symbol": {"type": "string", "description": "Stock ticker symbol"},
+                        "interval": {"type": "string", "description": "Time interval"},
+                        "time_period": {"type": "integer", "description": "Lookback period (default 14)"},
+                        "series_type": {"type": "string", "description": "Price type"}
+                    },
+                    "required": ["symbol"]
+                }
+            },
+            {
+                "name": "get_fx_rate",
+                "description": "Get real-time foreign exchange rate between two currencies.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "from_currency": {"type": "string", "description": "Source currency code (USD, EUR, GBP, JPY, etc.)"},
+                        "to_currency": {"type": "string", "description": "Target currency code"}
+                    },
+                    "required": ["from_currency", "to_currency"]
+                }
+            },
+            {
+                "name": "get_crypto_rate",
+                "description": "Get real-time cryptocurrency exchange rate.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "symbol": {"type": "string", "description": "Crypto symbol (BTC, ETH, DOGE, etc.)"},
+                        "market": {"type": "string", "description": "Market currency (default USD)"}
+                    },
+                    "required": ["symbol"]
+                }
+            },
+            {
                 "name": "get_city_weather",
                 "description": "Get current weather information for a specified city. Returns temperature, humidity, wind speed, and weather conditions.",
                 "input_schema": {
@@ -74,21 +167,25 @@ class MCPChatInterface:
         welcome_text = """
 # MCP-FinTechCo Interactive Chat Test Utility
 
-Welcome! This interactive chat interface combines the power of Claude AI with your MCP server tools.
+Welcome! This interactive chat interface combines Claude AI with comprehensive financial data tools.
 
 ## Available Commands:
-- Type your message to chat naturally
-- Ask about weather in any city (e.g., "What's the weather in London?")
+- Type your message to chat naturally about stocks, forex, crypto, and more
+- Ask about stock prices, technical indicators, exchange rates
 - Type `exit`, `quit`, or `bye` to end the session
-- Type `help` for available MCP tools
+- Type `help` for all available MCP tools
 - Type `clear` to clear conversation history
 
 ## How It Works:
-When you ask questions that match MCP server capabilities, Claude will automatically
-invoke the appropriate tools and integrate the results into the conversation.
+When you ask financial questions, Claude automatically invokes the appropriate tools
+and integrates real-time market data into the conversation.
 
-**Available MCP Tools:**
-- `get_city_weather`: Get current weather for any city worldwide
+**Financial Tools Available:**
+- Stock Quotes (e.g., "What's Apple's stock price?")
+- Technical Indicators (SMA, RSI)
+- Foreign Exchange Rates (e.g., "USD to EUR rate?")
+- Cryptocurrency Prices (e.g., "Bitcoin price?")
+- Historical Data & Weather
         """
 
         panel = Panel(
@@ -137,31 +234,98 @@ invoke the appropriate tools and integrate the results into the conversation.
 
         try:
             # Execute the appropriate tool
-            if tool_name == "get_city_weather":
+            if tool_name == "get_stock_quote":
+                result = await get_stock_quote(tool_input.get("symbol"))
+                table = Table(box=box.SIMPLE, show_header=False, padding=(0, 2))
+                table.add_column("Field", style="cyan bold", width=25)
+                table.add_column("Value", style="white", width=40)
+                table.add_row("Symbol", result["symbol"])
+                table.add_row("Price", f"${result['price']:.2f}")
+                table.add_row("Change", f"{result['change']:+.2f} ({result['change_percent']})")
+                table.add_row("Volume", f"{result['volume']:,}")
+                table.add_row("Open", f"${result['open']:.2f}")
+                table.add_row("High/Low", f"${result['high']:.2f} / ${result['low']:.2f}")
+                console.print(Panel(table, title="[bold green]Stock Quote[/bold green]", border_style="green"))
+                return result
+
+            elif tool_name == "get_stock_daily":
+                result = await get_stock_daily(tool_input.get("symbol"), tool_input.get("outputsize", "compact"))
+                console.print(f"[green]Symbol:[/green] {result['symbol']}")
+                console.print(f"[green]Last Refreshed:[/green] {result['last_refreshed']}")
+                console.print(f"[green]Data Points:[/green] {result['total_points']}")
+                console.print(f"[green]Recent Prices:[/green] (showing first 5 days)")
+                for entry in result['time_series'][:5]:
+                    console.print(f"  {entry['date']}: Close ${entry['close']:.2f} (Vol: {entry['volume']:,})")
+                return result
+
+            elif tool_name == "get_sma":
+                result = await get_sma(
+                    tool_input.get("symbol"),
+                    tool_input.get("interval", "daily"),
+                    tool_input.get("time_period", 20),
+                    tool_input.get("series_type", "close")
+                )
+                console.print(f"[green]Symbol:[/green] {result['symbol']}")
+                console.print(f"[green]Indicator:[/green] SMA({result['time_period']})")
+                console.print(f"[green]Recent Values:[/green]")
+                for entry in result['values'][:5]:
+                    console.print(f"  {entry['date']}: {entry['sma']:.2f}")
+                return result
+
+            elif tool_name == "get_rsi":
+                result = await get_rsi(
+                    tool_input.get("symbol"),
+                    tool_input.get("interval", "daily"),
+                    tool_input.get("time_period", 14),
+                    tool_input.get("series_type", "close")
+                )
+                console.print(f"[green]Symbol:[/green] {result['symbol']}")
+                console.print(f"[green]Indicator:[/green] RSI({result['time_period']})")
+                console.print(f"[green]Recent Values:[/green] (>70=overbought, <30=oversold)")
+                for entry in result['values'][:5]:
+                    rsi_val = entry['rsi']
+                    color = "red" if rsi_val > 70 else "green" if rsi_val < 30 else "yellow"
+                    console.print(f"  {entry['date']}: [{color}]{rsi_val:.2f}[/{color}]")
+                return result
+
+            elif tool_name == "get_fx_rate":
+                result = await get_fx_rate(tool_input.get("from_currency"), tool_input.get("to_currency"))
+                table = Table(box=box.SIMPLE, show_header=False, padding=(0, 2))
+                table.add_column("Field", style="cyan bold", width=25)
+                table.add_column("Value", style="white", width=40)
+                table.add_row("From", f"{result['from_currency']} ({result['from_currency_name']})")
+                table.add_row("To", f"{result['to_currency']} ({result['to_currency_name']})")
+                table.add_row("Exchange Rate", f"{result['exchange_rate']:.4f}")
+                table.add_row("Bid/Ask", f"{result['bid_price']:.4f} / {result['ask_price']:.4f}")
+                console.print(Panel(table, title="[bold green]FX Rate[/bold green]", border_style="green"))
+                return result
+
+            elif tool_name == "get_crypto_rate":
+                result = await get_crypto_rate(tool_input.get("symbol"), tool_input.get("market", "USD"))
+                table = Table(box=box.SIMPLE, show_header=False, padding=(0, 2))
+                table.add_column("Field", style="cyan bold", width=25)
+                table.add_column("Value", style="white", width=40)
+                table.add_row("Cryptocurrency", f"{result['symbol']} ({result['name']})")
+                table.add_row("Market", result['market'])
+                table.add_row("Price", f"${result['price']:,.2f}")
+                table.add_row("Bid/Ask", f"${result['bid_price']:,.2f} / ${result['ask_price']:,.2f}")
+                console.print(Panel(table, title="[bold green]Crypto Rate[/bold green]", border_style="green"))
+                return result
+
+            elif tool_name == "get_city_weather":
                 city = tool_input.get("city", "")
                 result = await get_city_weather_impl(city)
-
-                # Format the result beautifully
                 weather_table = Table(box=box.SIMPLE, show_header=False, padding=(0, 2))
                 weather_table.add_column("Field", style="cyan bold", width=25)
                 weather_table.add_column("Value", style="white", width=40)
-
                 weather_table.add_row("Location", result["location"])
                 weather_table.add_row("Temperature", f"{result['temperature']}°C ({result['temperature_fahrenheit']}°F)")
                 weather_table.add_row("Conditions", result["conditions"])
                 weather_table.add_row("Humidity", f"{result['humidity']}%")
                 weather_table.add_row("Wind Speed", f"{result['wind_speed']} km/h")
-                weather_table.add_row("Coordinates", f"{result['latitude']}, {result['longitude']}")
-
-                result_panel = Panel(
-                    weather_table,
-                    title="[bold green]MCP Server Response[/bold green]",
-                    border_style="green",
-                    box=box.ROUNDED
-                )
-                console.print(result_panel)
-
+                console.print(Panel(weather_table, title="[bold green]Weather[/bold green]", border_style="green"))
                 return result
+
             else:
                 error_msg = f"Unknown tool: {tool_name}"
                 console.print(f"[bold red]ERROR:[/bold red] {error_msg}")
