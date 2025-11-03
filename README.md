@@ -104,23 +104,43 @@ python server.py
 
 ### Testing the Server
 
-Use the included test client:
+**Automated Test Suite:**
 ```bash
 python test_client.py
 ```
 
-This will run a series of tests to validate the server's functionality.
+This will run a series of automated tests to validate the server's functionality.
+
+**Interactive Chat Test Utility:**
+```bash
+python chat_test.py
+```
+
+This launches an advanced interactive chat interface powered by Claude AI for comprehensive testing of MCP server capabilities. See [CHAT_TEST_USAGE.md](CHAT_TEST_USAGE.md) for detailed usage instructions.
+
+Features:
+- Natural language conversation with Claude AI
+- Automatic tool detection and execution
+- Beautiful terminal UI with the `rich` library
+- Real-time MCP server tool testing
+- Visual differentiation between Claude and MCP responses
+
+**Requirements for chat_test.py:**
+- Add `ANTHROPIC_API_KEY` to your `.env` file
+- Ensure `rich` and `anthropic` packages are installed
 
 ## Project Structure
 
 ```
 MCP-FinTechCo/
 ├── server.py              # Main MCP server implementation
-├── test_client.py         # Local testing client
+├── test_client.py         # Automated testing client
+├── chat_test.py           # Interactive chat test utility with Claude AI
 ├── requirements.txt       # Python dependencies
 ├── .env.sample           # Environment variable template
 ├── .gitignore            # Git ignore patterns
 ├── README.md             # This file
+├── CHAT_TEST_USAGE.md    # Chat test utility documentation
 ├── plan.md               # Project implementation plan
 ├── DEPLOYMENT.md         # GCP deployment guide
 ├── startup-script.sh     # VM initialization script
