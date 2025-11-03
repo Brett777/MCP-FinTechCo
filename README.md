@@ -486,28 +486,95 @@ This script automates the deployment process to GCP.
 
 For production use with high demand, consider staggering requests or using batch endpoints.
 
-## Use Cases
+## Use Cases & Combined Analysis Examples
 
-### Algorithmic Trading
+### Integrated Market-Economics Analysis
+
+The true power of this MCP server lies in combining **real-time market data** (Alpha Vantage) with **comprehensive economic indicators** (FRED) for deeper insights:
+
+**Example 1: Employment Report Impact Analysis**
+```
+"Analyze how the latest nonfarm payroll (PAYEMS) release affected the stock market.
+Show me Apple stock performance over the same period and calculate RSI to see if
+the market is overbought or oversold in response."
+```
+Combines: `get_economic_indicator(PAYEMS)` + `get_stock_daily(AAPL)` + `get_rsi(AAPL)`
+
+**Example 2: Interest Rate and Currency Correlation**
+```
+"How has the USD to EUR exchange rate changed as the Federal Funds Rate (FEDFUNDS)
+has been adjusted? Show recent rate changes and FX movements."
+```
+Combines: `get_fx_rate(USD, EUR)` + `get_series_observations(FEDFUNDS)`
+
+**Example 3: Inflation and Purchasing Power Analysis**
+```
+"Compare inflation trends (CPI) with tech stock performance. Are tech stocks
+outpacing inflation? Show me the last 24 months of both."
+```
+Combines: `get_economic_indicator(CPIAUCSL)` + `get_stock_daily(QQQ)` + `get_series_observations(CPIAUCSL, units=pch)`
+
+**Example 4: Fed Policy and Cryptocurrency Response**
+```
+"When the Federal Funds Rate changed, how did Bitcoin respond? Show me the rate
+changes and Bitcoin's price movements during the same periods."
+```
+Combines: `get_crypto_rate(BTC)` + `get_series_observations(FEDFUNDS)` + `get_economic_indicator(FEDFUNDS)`
+
+**Example 5: Real Estate Market Conditions**
+```
+"Find housing market data (housing starts, mortgage rates). Then compare
+homebuilder stock (XHB) performance to current mortgage rate trends."
+```
+Combines: `get_category_series(266)` (housing) + `get_stock_quote(XHB)` + `get_economic_indicator(MORTGAGE30US)`
+
+**Example 6: Sector Rotation Based on Economic Cycles**
+```
+"Is unemployment rising or falling? Based on that trend, which sector is better
+positioned - Technology (QQQ) or Industrials (IYJ)? Show me RSI for both."
+```
+Combines: `get_economic_indicator(UNRATE)` + `get_rsi(QQQ)` + `get_rsi(IYJ)`
+
+**Example 7: Leading Indicators for Market Timing**
+```
+"Search for leading economic indicators. Get the recent data on initial jobless
+claims and consumer confidence, then check if the S&P 500 (SPY) RSI shows
+overbought/oversold conditions."
+```
+Combines: `search_fred_series(leading indicators)` + `get_series_observations(ICSA)` + `get_rsi(SPY)`
+
+### Traditional Use Cases
+
+**Algorithmic Trading**
 - Real-time market data for trading algorithms
-- Technical indicators for signal generation
+- Technical indicators (SMA, RSI) for signal generation
 - Historical data for backtesting strategies
+- Economic data as macro filters for trade entry/exit
 
-### Portfolio Management
-- Multi-asset portfolio tracking
-- Real-time P&L calculations
+**Portfolio Management**
+- Multi-asset portfolio tracking with real-time quotes
+- Monitor economic health (GDP, unemployment) for portfolio rebalancing
+- Use interest rates to model bond/equity allocation
 - Risk analysis with technical indicators
 
-### Market Research
-- Historical price analysis
-- Trend identification with SMA/EMA
-- Momentum analysis with RSI
+**Market Research & Analysis**
+- Historical price analysis combined with economic context
+- Trend identification with SMA during different economic cycles
+- Momentum analysis (RSI) vs economic expansion/contraction phases
+- Understand market behavior during Fed policy changes
 
-### Financial Applications
-- Stock screeners
-- Trading dashboards
-- Investment analysis tools
+**Economic Research & Forecasting**
+- Discover leading indicators that predict market downturns
+- Analyze stock sector performance during economic cycles
+- Monitor inflation impact on different asset classes
+- Track currency movements vs monetary policy changes
+
+**Financial Applications**
+- Stock screeners that filter by technical indicators
+- Trading dashboards that overlay economic data with price charts
+- Investment analysis tools combining valuation with macro conditions
 - Market data APIs for fintech startups
+- Educational platforms showing market-economics relationships
 
 ## Troubleshooting
 
