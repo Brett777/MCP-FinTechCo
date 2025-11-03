@@ -1,23 +1,30 @@
 # MCP-FinTechCo Server
 
-A production-ready Model Context Protocol (MCP) server built with FastMCP 2.0, providing comprehensive financial technology tools and data services.
+A production-ready Model Context Protocol (MCP) server built with FastMCP 2.0, providing comprehensive financial technology and economic data tools.
 
 ## Overview
 
-MCP-FinTechCo is a scalable FinTech-focused MCP server designed for real-world financial applications, algorithmic trading, portfolio management, and market analysis.
+MCP-FinTechCo is a powerful, scalable FinTech and economic data MCP server designed for real-world financial applications, algorithmic trading, portfolio management, market analysis, and economic research.
 
 **What is MCP?** The Model Context Protocol is a standardized way to connect large language models (LLMs) to external tools and data sources. Think of it as "the USB-C port for AI" - it provides a uniform interface for AI applications to access financial data, execute functions, and interact with real-time market information.
 
-Built on FastMCP 2.0, this server provides robust access to real-time market data, technical indicators, foreign exchange rates, and cryptocurrency information through the industry-standard Alpha Vantage API.
+Built on FastMCP 2.0, this server provides robust access to:
+- **Real-time market data** through the Alpha Vantage API (stock quotes, FX rates, crypto prices)
+- **Comprehensive economic indicators** through the Federal Reserve Economic Data (FRED) API
+- **Technical analysis** with built-in indicators (SMA, RSI)
+- **Economic research** tools with historical time series data
 
 ### Key Features
 
-- **FastMCP 2.0 Framework**: Modern, production-ready MCP implementation optimized for financial data
+- **FastMCP 2.0 Framework**: Modern, production-ready MCP implementation optimized for financial and economic data
 - **Alpha Vantage Integration**: Comprehensive access to global financial markets
+- **FRED API Integration**: 400,000+ US and global economic indicators
 - **Real-Time Market Data**: Stock quotes, FX rates, and cryptocurrency prices
-- **Technical Analysis**: Built-in indicators (SMA, RSI, MACD, and more)
+- **Economic Indicators**: GDP, CPI, unemployment, and thousands more
+- **Technical Analysis**: Built-in indicators (SMA, RSI)
 - **Cloud-Ready**: Designed for deployment on Google Cloud Platform
-- **Extensible Architecture**: Easy to add new financial tools and data sources
+- **Extensible Architecture**: Easy to add new financial and economic tools
+- **Tag-Based Discovery**: All tools tagged for easy filtering and discoverability
 - **Interactive Testing**: CLI chat interface powered by Claude AI
 - **Comprehensive Logging**: Built-in monitoring and debugging capabilities
 
@@ -124,6 +131,141 @@ Get current weather information for any city (demonstration of extensibility).
 
 *Note: The weather tool demonstrates the server's extensibility beyond financial data. Future versions may include additional utility tools.*
 
+## Economic Data Tools (FRED - Federal Reserve Economic Data)
+
+The MCP server integrates with the **Federal Reserve Economic Data (FRED) API**, providing access to 400,000+ US and global economic indicators. These tools enable comprehensive economic analysis, research, and integration with financial applications.
+
+**Tags:** `economic-data`, `fred`, `indicator`, `time-series`
+
+### FRED Series Search & Discovery
+
+#### search_fred_series
+Search for economic indicators in FRED database by keyword.
+
+**Parameters:**
+- `search_text` (string): Keywords to search (e.g., "unemployment", "GDP", "inflation")
+- `search_type` (string): "full_text" (default) or "series_id" for exact matches
+- `limit` (integer): Max results (1-1000, default: 50)
+
+**Returns:**
+```json
+{
+  "search_text": "unemployment",
+  "count": 50,
+  "total_count": 250+,
+  "series": [
+    {
+      "id": "UNRATE",
+      "title": "Unemployment Rate",
+      "units": "Percent",
+      "frequency": "Monthly",
+      "seasonal_adjustment": "Seasonally Adjusted",
+      "observation_start": "1948-01-01",
+      "observation_end": "2025-10-01"
+    },
+    ...
+  ]
+}
+```
+
+#### get_fred_releases
+Get list of available FRED economic releases (CPI, Employment, GDP, etc.).
+
+**Parameters:**
+- `limit` (integer): Max releases (1-1000, default: 50)
+
+**Returns:** List of economic releases with metadata
+
+### FRED Data Retrieval
+
+#### get_economic_indicator
+Get historical time series data for a specific economic indicator.
+
+**Parameters:**
+- `series_id` (string): FRED series ID (e.g., "UNRATE", "GDP", "CPIAUCSL")
+- `start_date` (string): Start date in YYYY-MM-DD format (optional)
+- `end_date` (string): End date in YYYY-MM-DD format (optional)
+
+**Returns:**
+```json
+{
+  "series_id": "UNRATE",
+  "observations_count": 48,
+  "observations": [
+    {"date": "2025-10-01", "value": 4.1},
+    {"date": "2025-09-01", "value": 4.2},
+    ...
+  ]
+}
+```
+
+#### get_series_metadata
+Get detailed metadata for a FRED series.
+
+**Parameters:**
+- `series_id` (string): FRED series ID
+
+**Returns:** Title, units, frequency, seasonal adjustment, date ranges, popularity, notes
+
+#### get_category_series
+Get all economic series within a FRED category.
+
+**Parameters:**
+- `category_id` (integer): FRED category ID (e.g., 12 for employment, 106 for production)
+- `limit` (integer): Max series (1-1000, default: 50)
+
+**Returns:**
+```json
+{
+  "category_id": 12,
+  "category_name": "Employment",
+  "series_count": 50,
+  "series": [
+    {"id": "UNRATE", "title": "Unemployment Rate", ...},
+    {"id": "PAYEMS", "title": "Total Nonfarm Payroll", ...},
+    ...
+  ]
+}
+```
+
+#### get_series_observations
+Get detailed observations with advanced filtering and transformations.
+
+**Parameters:**
+- `series_id` (string): FRED series ID
+- `start_date` (string): Start date (YYYY-MM-DD, optional)
+- `end_date` (string): End date (YYYY-MM-DD, optional)
+- `frequency` (string): Aggregation - "d"(daily), "w"(weekly), "m"(monthly), "q"(quarterly), "a"(annual)
+- `units` (string): Transformation - "lin"(levels), "chg"(change), "pch"(% change), "pca"(% change annual), "log"(log scale)
+
+**Returns:** Observations with specified transformations applied
+
+### Popular FRED Series IDs
+
+**Labor Market:**
+- `UNRATE` - Unemployment Rate (%)
+- `PAYEMS` - Total Nonfarm Payroll (Thousands)
+- `ICSA` - Initial Claims
+
+**Inflation:**
+- `CPIAUCSL` - Consumer Price Index (All Urban Consumers)
+- `CPILFESL` - Core CPI (Excluding Food & Energy)
+- `DFEDTARU` - Federal Funds Rate
+
+**GDP & Output:**
+- `GDP` - Real Gross Domestic Product (Billions)
+- `GDPC1` - Real GDP per Capita
+- `INDPRO` - Industrial Production Index
+
+**Interest Rates:**
+- `FEDFUNDS` - Effective Federal Funds Rate (%)
+- `DGS10` - 10-Year Treasury Constant Maturity Rate
+- `DGS2` - 2-Year Treasury Rate
+
+**Housing:**
+- `MORTGAGE30US` - 30-Year Mortgage Rate
+- `HOUST` - Housing Starts (Thousands)
+
 ## Installation
 
 ### Prerequisites
@@ -132,6 +274,7 @@ Get current weather information for any city (demonstration of extensibility).
 - pip (Python package manager)
 - Git
 - Alpha Vantage API key (free at https://www.alphavantage.co/support/#api-key)
+- FRED API key (free at https://fred.stlouisfed.org/docs/api/api_key.html)
 
 ### Local Setup
 
@@ -168,6 +311,7 @@ cp .env.sample .env
 Edit `.env` and add your API keys:
 ```bash
 ALPHA_VANTAGE_API_KEY=your-key-here
+FRED_API_KEY=your-key-here
 ANTHROPIC_API_KEY=your-key-here  # For chat_test.py
 ```
 
@@ -246,13 +390,14 @@ The server uses environment variables for configuration. See `.env.sample` for a
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `ALPHA_VANTAGE_API_KEY` | Alpha Vantage API key (required) | - |
+| `ALPHA_VANTAGE_API_KEY` | Alpha Vantage API key (required for market data) | - |
+| `FRED_API_KEY` | FRED API key (required for economic data) | - |
+| `ANTHROPIC_API_KEY` | Claude API key (required for chat_test.py) | - |
 | `MCP_SERVER_NAME` | Server name | mcp-fintechco-server |
 | `MCP_SERVER_VERSION` | Server version | 1.0.0 |
 | `MCP_SERVER_PORT` | Server port | 8000 |
 | `LOG_LEVEL` | Logging level | INFO |
 | `ENVIRONMENT` | Environment name | development |
-| `ANTHROPIC_API_KEY` | Claude API key (for chat_test.py) | - |
 
 ## Development
 
@@ -331,8 +476,15 @@ This script automates the deployment process to GCP.
 **Alpha Vantage Free Tier:**
 - 25 API requests per day
 - 5 API requests per minute
+- For production use, consider upgrading to a premium plan
 
-For production use, consider upgrading to a premium Alpha Vantage plan.
+**FRED API:**
+- 120 API requests per minute (shared across all IP addresses)
+- 1 API request per second per IP address
+- Unlimited daily requests
+- Free API key registration required
+
+For production use with high demand, consider staggering requests or using batch endpoints.
 
 ## Use Cases
 
@@ -390,8 +542,11 @@ Contributions are welcome! Please:
 - [FastMCP Documentation](https://gofastmcp.com/getting-started/welcome)
 - [FastMCP Quickstart](https://gofastmcp.com/getting-started/quickstart)
 - [Alpha Vantage API Documentation](https://www.alphavantage.co/documentation/)
+- [FRED API Documentation](https://fred.stlouisfed.org/docs/api/fred/)
+- [FRED Database Browser](https://fred.stlouisfed.org/)
 - [MCP Protocol Specification](https://modelcontextprotocol.io/)
 - [Technical Analysis Fundamentals](https://www.investopedia.com/technical-analysis-4689657)
+- [Economic Indicators Guide](https://www.investopedia.com/economic-indicators-4533392)
 
 ## License
 
@@ -422,10 +577,12 @@ For issues, questions, or contributions:
 ## Acknowledgments
 
 - Built with [FastMCP 2.0](https://gofastmcp.com/)
-- Financial data from [Alpha Vantage](https://www.alphavantage.co/)
+- Financial market data from [Alpha Vantage](https://www.alphavantage.co/)
+- Economic data from [Federal Reserve Economic Data (FRED)](https://fred.stlouisfed.org/)
 - Weather data from [Open-Meteo](https://open-meteo.com/) (utility example)
 - Deployed on Google Cloud Platform
 - Interactive testing powered by Anthropic's Claude AI
+- Tool tagging and discoverability improvements for enhanced usability
 
 ---
 

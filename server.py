@@ -37,6 +37,10 @@ WEATHER_API = "https://api.open-meteo.com/v1/forecast"
 ALPHA_VANTAGE_API = "https://www.alphavantage.co/query"
 ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", "")
 
+# FRED API configuration
+FRED_API_BASE = "https://api.stlouisfed.org/fred"
+FRED_API_KEY = os.getenv("FRED_API_KEY", "")
+
 
 async def get_city_coordinates(city_name: str) -> tuple[float, float, str]:
     """
@@ -674,6 +678,579 @@ async def get_crypto_rate(symbol: str, market: str = "USD") -> dict:
         {"symbol": "BTC", "market": "USD", "price": 45000.50, ...}
     """
     return await get_crypto_rate_impl(symbol, market)
+
+
+# ============================================================================
+# FRED (Federal Reserve Economic Data) TOOLS
+# ============================================================================
+
+async def search_fred_series_impl(search_text: str, search_type: str = "full_text", limit: int = 50) -> dict:
+    """Implementation of FRED series search."""
+    if not FRED_API_KEY:
+        raise Exception("FRED_API_KEY not configured in environment")
+
+    try:
+        logger.info(f"Searching FRED series: {search_text}")
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{FRED_API_BASE}/series/search",
+                params={
+                    "search_text": search_text,
+                    "search_type": search_type,
+                    "limit": min(limit, 1000),
+                    "file_type": "json",
+                    "api_key": FRED_API_KEY
+                }
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        if "series" not in data or not data["series"]:
+            raise ValueError(f"No series found matching '{search_text}'")
+
+        # Limit results
+        series_list = []
+        for series in data["series"][:limit]:
+            series_list.append({
+                "id": series.get("id", ""),
+                "title": series.get("title", ""),
+                "units": series.get("units", ""),
+                "frequency": series.get("frequency", ""),
+                "seasonal_adjustment": series.get("seasonal_adjustment", ""),
+                "observation_start": series.get("observation_start", ""),
+                "observation_end": series.get("observation_end", "")
+            })
+
+        result = {
+            "search_text": search_text,
+            "count": len(series_list),
+            "total_count": data.get("count", len(series_list)),
+            "series": series_list
+        }
+
+        logger.info(f"Found {len(series_list)} series matching '{search_text}'")
+        return result
+
+    except httpx.HTTPError as e:
+        logger.error(f"HTTP error searching FRED series: {e}")
+        raise Exception(f"Failed to search FRED series: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error searching FRED series: {e}")
+        raise
+
+
+@mcp.tool()
+async def search_fred_series(search_text: str, search_type: str = "full_text", limit: int = 50) -> dict:
+    """
+    Search for economic indicators in FRED by keyword.
+
+    Searches the Federal Reserve Economic Data (FRED) database for economic time series
+    matching the specified search text.
+
+    Args:
+        search_text: Keywords to search (e.g., "unemployment", "GDP", "inflation")
+        search_type: Search type - "full_text" (default, searches all fields) or "series_id" (exact ID match)
+        limit: Maximum number of results to return (1-1000, default: 50)
+
+    Returns:
+        Dictionary containing:
+        - search_text: Original search query
+        - count: Number of results returned
+        - total_count: Total matches available
+        - series: List of matching series with id, title, units, frequency, etc.
+
+    Example:
+        >>> await search_fred_series("unemployment rate", "full_text", 20)
+        {
+            "search_text": "unemployment rate",
+            "count": 20,
+            "total_count": 250+,
+            "series": [
+                {"id": "UNRATE", "title": "Unemployment Rate", "units": "Percent", ...},
+                ...
+            ]
+        }
+    """
+    return await search_fred_series_impl(search_text, search_type, limit)
+
+
+async def get_economic_indicator_impl(series_id: str, start_date: Optional[str] = None, end_date: Optional[str] = None) -> dict:
+    """Implementation of economic indicator data retrieval."""
+    if not FRED_API_KEY:
+        raise Exception("FRED_API_KEY not configured in environment")
+
+    try:
+        logger.info(f"Fetching economic indicator: {series_id}")
+
+        params = {
+            "series_id": series_id,
+            "file_type": "json",
+            "api_key": FRED_API_KEY
+        }
+
+        if start_date:
+            params["observation_start"] = start_date
+        if end_date:
+            params["observation_end"] = end_date
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{FRED_API_BASE}/series/observations",
+                params=params
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        if "observations" not in data:
+            raise ValueError(f"Invalid series_id or no data available for '{series_id}'")
+
+        # Get most recent 20 observations
+        observations = []
+        for obs in data["observations"][-20:]:
+            if obs.get("value") != ".":  # FRED uses "." for missing values
+                observations.append({
+                    "date": obs.get("date", ""),
+                    "value": float(obs.get("value", 0))
+                })
+
+        result = {
+            "series_id": series_id,
+            "observations_count": len(observations),
+            "observations": observations
+        }
+
+        logger.info(f"Successfully fetched indicator {series_id}")
+        return result
+
+    except httpx.HTTPError as e:
+        logger.error(f"HTTP error fetching economic indicator: {e}")
+        raise Exception(f"Failed to fetch indicator data: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error fetching economic indicator: {e}")
+        raise
+
+
+@mcp.tool()
+async def get_economic_indicator(series_id: str, start_date: Optional[str] = None, end_date: Optional[str] = None) -> dict:
+    """
+    Get historical time series data for an economic indicator.
+
+    Retrieves observations for a specific FRED series such as GDP, unemployment rate, CPI, etc.
+
+    Args:
+        series_id: FRED series identifier (e.g., "UNRATE" for unemployment, "GDP" for gross domestic product)
+        start_date: Start date for observations in YYYY-MM-DD format (optional)
+        end_date: End date for observations in YYYY-MM-DD format (optional)
+
+    Returns:
+        Dictionary containing:
+        - series_id: The requested series identifier
+        - observations_count: Number of observations returned
+        - observations: List of {date, value} pairs
+
+    Example:
+        >>> await get_economic_indicator("UNRATE", "2020-01-01", "2023-12-31")
+        {
+            "series_id": "UNRATE",
+            "observations_count": 48,
+            "observations": [
+                {"date": "2020-01-01", "value": 3.5},
+                {"date": "2020-02-01", "value": 3.5},
+                ...
+            ]
+        }
+    """
+    return await get_economic_indicator_impl(series_id, start_date, end_date)
+
+
+async def get_series_metadata_impl(series_id: str) -> dict:
+    """Implementation of series metadata retrieval."""
+    if not FRED_API_KEY:
+        raise Exception("FRED_API_KEY not configured in environment")
+
+    try:
+        logger.info(f"Fetching metadata for series: {series_id}")
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{FRED_API_BASE}/series",
+                params={
+                    "series_id": series_id,
+                    "file_type": "json",
+                    "api_key": FRED_API_KEY
+                }
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        if "seriess" not in data or not data["seriess"]:
+            raise ValueError(f"Series '{series_id}' not found")
+
+        series = data["seriess"][0]
+
+        result = {
+            "id": series.get("id", ""),
+            "title": series.get("title", ""),
+            "units": series.get("units", ""),
+            "frequency": series.get("frequency", ""),
+            "seasonal_adjustment": series.get("seasonal_adjustment", ""),
+            "observation_start": series.get("observation_start", ""),
+            "observation_end": series.get("observation_end", ""),
+            "last_updated": series.get("last_updated", ""),
+            "popularity": series.get("popularity", 0),
+            "notes": series.get("notes", "")
+        }
+
+        logger.info(f"Successfully fetched metadata for {series_id}")
+        return result
+
+    except httpx.HTTPError as e:
+        logger.error(f"HTTP error fetching series metadata: {e}")
+        raise Exception(f"Failed to fetch series metadata: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error fetching series metadata: {e}")
+        raise
+
+
+@mcp.tool()
+async def get_series_metadata(series_id: str) -> dict:
+    """
+    Get detailed metadata for a FRED economic series.
+
+    Retrieves information about a specific FRED series including its title, units,
+    frequency, date ranges, and notes.
+
+    Args:
+        series_id: FRED series identifier (e.g., "UNRATE", "GDP", "CPIAUCSL")
+
+    Returns:
+        Dictionary containing:
+        - id: Series identifier
+        - title: Human-readable series name
+        - units: Measurement units
+        - frequency: Update frequency (Annual, Monthly, Quarterly, etc.)
+        - seasonal_adjustment: Seasonal adjustment type
+        - observation_start: First available data date
+        - observation_end: Last available data date
+        - last_updated: When the series was last updated
+        - popularity: Popularity/usage score
+        - notes: Additional descriptive notes
+
+    Example:
+        >>> await get_series_metadata("UNRATE")
+        {
+            "id": "UNRATE",
+            "title": "Unemployment Rate",
+            "units": "Percent",
+            "frequency": "Monthly",
+            "observation_start": "1948-01-01",
+            "observation_end": "2025-10-01",
+            ...
+        }
+    """
+    return await get_series_metadata_impl(series_id)
+
+
+async def get_fred_releases_impl(limit: int = 50) -> dict:
+    """Implementation of FRED releases retrieval."""
+    if not FRED_API_KEY:
+        raise Exception("FRED_API_KEY not configured in environment")
+
+    try:
+        logger.info("Fetching FRED releases")
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{FRED_API_BASE}/releases",
+                params={
+                    "limit": min(limit, 1000),
+                    "file_type": "json",
+                    "api_key": FRED_API_KEY
+                }
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        if "releases" not in data:
+            raise ValueError("Could not fetch releases")
+
+        releases_list = []
+        for release in data["releases"][:limit]:
+            releases_list.append({
+                "id": release.get("id", ""),
+                "name": release.get("name", ""),
+                "press_release": release.get("press_release", False),
+                "link": release.get("link", "")
+            })
+
+        result = {
+            "releases_count": len(releases_list),
+            "releases": releases_list
+        }
+
+        logger.info(f"Successfully fetched {len(releases_list)} FRED releases")
+        return result
+
+    except httpx.HTTPError as e:
+        logger.error(f"HTTP error fetching FRED releases: {e}")
+        raise Exception(f"Failed to fetch FRED releases: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error fetching FRED releases: {e}")
+        raise
+
+
+@mcp.tool()
+async def get_fred_releases(limit: int = 50) -> dict:
+    """
+    Get list of available FRED economic data releases.
+
+    Retrieves information about major economic releases available in FRED, such as
+    Consumer Price Index, Employment Cost Index, Unemployment Rate, etc.
+
+    Args:
+        limit: Maximum number of releases to return (1-1000, default: 50)
+
+    Returns:
+        Dictionary containing:
+        - releases_count: Number of releases returned
+        - releases: List of releases with id, name, press_release status, and link
+
+    Example:
+        >>> await get_fred_releases(20)
+        {
+            "releases_count": 20,
+            "releases": [
+                {"id": 10, "name": "Consumer Price Index", "press_release": True, "link": "..."},
+                {"id": 54, "name": "Employment Cost Index", "press_release": True, "link": "..."},
+                ...
+            ]
+        }
+    """
+    return await get_fred_releases_impl(limit)
+
+
+async def get_category_series_impl(category_id: int, limit: int = 50) -> dict:
+    """Implementation of category series retrieval."""
+    if not FRED_API_KEY:
+        raise Exception("FRED_API_KEY not configured in environment")
+
+    try:
+        logger.info(f"Fetching series for category: {category_id}")
+
+        # First, get the category info
+        async with httpx.AsyncClient() as client:
+            cat_response = await client.get(
+                f"{FRED_API_BASE}/category",
+                params={
+                    "category_id": category_id,
+                    "file_type": "json",
+                    "api_key": FRED_API_KEY
+                }
+            )
+            cat_response.raise_for_status()
+            cat_data = cat_response.json()
+
+        if "categories" not in cat_data or not cat_data["categories"]:
+            raise ValueError(f"Category {category_id} not found")
+
+        category = cat_data["categories"][0]
+
+        # Get series in category
+        series_response = await client.get(
+            f"{FRED_API_BASE}/category/series",
+            params={
+                "category_id": category_id,
+                "limit": min(limit, 1000),
+                "file_type": "json",
+                "api_key": FRED_API_KEY
+            }
+        )
+        series_response.raise_for_status()
+        series_data = series_response.json()
+
+        if "seriess" not in series_data:
+            raise ValueError(f"Could not fetch series for category {category_id}")
+
+        series_list = []
+        for series in series_data["seriess"][:limit]:
+            series_list.append({
+                "id": series.get("id", ""),
+                "title": series.get("title", ""),
+                "units": series.get("units", ""),
+                "frequency": series.get("frequency", ""),
+                "seasonal_adjustment": series.get("seasonal_adjustment", "")
+            })
+
+        result = {
+            "category_id": category_id,
+            "category_name": category.get("name", ""),
+            "series_count": len(series_list),
+            "series": series_list
+        }
+
+        logger.info(f"Successfully fetched {len(series_list)} series for category {category_id}")
+        return result
+
+    except httpx.HTTPError as e:
+        logger.error(f"HTTP error fetching category series: {e}")
+        raise Exception(f"Failed to fetch category series: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error fetching category series: {e}")
+        raise
+
+
+@mcp.tool()
+async def get_category_series(category_id: int, limit: int = 50) -> dict:
+    """
+    Get all economic series within a specific FRED category.
+
+    Categories organize FRED series by economic topic (e.g., Employment, Production,
+    Income, Spending & Output, Money, Banking & Finance, etc.).
+
+    Args:
+        category_id: FRED category identifier (e.g., 12 for employment, 106 for production)
+        limit: Maximum number of series to return (1-1000, default: 50)
+
+    Returns:
+        Dictionary containing:
+        - category_id: The requested category identifier
+        - category_name: Human-readable category name
+        - series_count: Number of series returned
+        - series: List of series with id, title, units, frequency, etc.
+
+    Example:
+        >>> await get_category_series(12, 20)  # Employment category
+        {
+            "category_id": 12,
+            "category_name": "Employment",
+            "series_count": 20,
+            "series": [
+                {"id": "UNRATE", "title": "Unemployment Rate", ...},
+                {"id": "PAYEMS", "title": "Total Nonfarm Payroll", ...},
+                ...
+            ]
+        }
+    """
+    return await get_category_series_impl(category_id, limit)
+
+
+async def get_series_observations_impl(
+    series_id: str,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    frequency: Optional[str] = None,
+    units: Optional[str] = None
+) -> dict:
+    """Implementation of advanced series observations with transformations."""
+    if not FRED_API_KEY:
+        raise Exception("FRED_API_KEY not configured in environment")
+
+    try:
+        logger.info(f"Fetching advanced observations for: {series_id}")
+
+        params = {
+            "series_id": series_id,
+            "file_type": "json",
+            "api_key": FRED_API_KEY,
+            "sort_order": "desc"  # Most recent first
+        }
+
+        if start_date:
+            params["observation_start"] = start_date
+        if end_date:
+            params["observation_end"] = end_date
+        if frequency:
+            params["frequency"] = frequency
+        if units:
+            params["units"] = units
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{FRED_API_BASE}/series/observations",
+                params=params
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        if "observations" not in data:
+            raise ValueError(f"Invalid series_id or no data available for '{series_id}'")
+
+        observations = []
+        for obs in data["observations"]:
+            if obs.get("value") != ".":
+                observations.append({
+                    "date": obs.get("date", ""),
+                    "value": float(obs.get("value", 0))
+                })
+
+        result = {
+            "series_id": series_id,
+            "observations_count": len(observations),
+            "parameters": {
+                "start_date": start_date,
+                "end_date": end_date,
+                "frequency": frequency,
+                "units": units
+            },
+            "observations": observations
+        }
+
+        logger.info(f"Successfully fetched {len(observations)} observations for {series_id}")
+        return result
+
+    except httpx.HTTPError as e:
+        logger.error(f"HTTP error fetching series observations: {e}")
+        raise Exception(f"Failed to fetch observations: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error fetching series observations: {e}")
+        raise
+
+
+@mcp.tool()
+async def get_series_observations(
+    series_id: str,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    frequency: Optional[str] = None,
+    units: Optional[str] = None
+) -> dict:
+    """
+    Get detailed observations for a FRED series with optional transformations.
+
+    Advanced tool for retrieving economic time series data with support for date
+    filtering, frequency aggregation, and unit transformations.
+
+    Args:
+        series_id: FRED series identifier (e.g., "UNRATE", "GDP", "CPIAUCSL")
+        start_date: Start date in YYYY-MM-DD format (optional)
+        end_date: End date in YYYY-MM-DD format (optional)
+        frequency: Aggregation frequency - "d"(daily), "w"(weekly), "m"(monthly),
+                  "q"(quarterly), "a"(annual) (optional)
+        units: Transformation type - "lin"(levels), "chg"(change), "pch"(percent change),
+              "pca"(percent change annual), "log"(log scale) (optional)
+
+    Returns:
+        Dictionary containing:
+        - series_id: The requested series identifier
+        - observations_count: Number of observations returned
+        - parameters: The parameters used in the request
+        - observations: List of {date, value} pairs with transformations applied
+
+    Example:
+        >>> await get_series_observations("UNRATE", "2020-01-01", "2023-12-31", "m", "lin")
+        {
+            "series_id": "UNRATE",
+            "observations_count": 47,
+            "parameters": {"start_date": "2020-01-01", "end_date": "2023-12-31", ...},
+            "observations": [
+                {"date": "2023-12-01", "value": 3.7},
+                {"date": "2023-11-01", "value": 3.8},
+                ...
+            ]
+        }
+    """
+    return await get_series_observations_impl(series_id, start_date, end_date, frequency, units)
 
 
 if __name__ == "__main__":

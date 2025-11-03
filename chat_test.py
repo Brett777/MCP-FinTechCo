@@ -35,7 +35,13 @@ from server import (
     get_sma_impl,
     get_rsi_impl,
     get_fx_rate_impl,
-    get_crypto_rate_impl
+    get_crypto_rate_impl,
+    search_fred_series_impl,
+    get_economic_indicator_impl,
+    get_series_metadata_impl,
+    get_fred_releases_impl,
+    get_category_series_impl,
+    get_series_observations_impl
 )
 
 # Load environment variables
@@ -59,11 +65,13 @@ class MCPChatInterface:
         self.client = Anthropic(api_key=self.anthropic_api_key)
         self.conversation_history: List[Dict[str, Any]] = []
 
-        # Define available MCP tools
+        # Define available MCP tools with tags for discoverability
         self.mcp_tools = [
+            # ===== STOCK MARKET TOOLS =====
             {
                 "name": "get_stock_quote",
                 "description": "Get real-time stock quote for any symbol including price, volume, change, and trading data.",
+                "tags": ["fintech", "market", "stock", "alpha-vantage", "real-time"],
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -78,6 +86,7 @@ class MCPChatInterface:
             {
                 "name": "get_stock_daily",
                 "description": "Get daily time series data for a stock with OHLCV (Open, High, Low, Close, Volume) values.",
+                "tags": ["fintech", "market", "stock", "alpha-vantage", "historical-data", "technical-analysis"],
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -94,9 +103,11 @@ class MCPChatInterface:
                     "required": ["symbol"]
                 }
             },
+            # ===== TECHNICAL INDICATORS =====
             {
                 "name": "get_sma",
                 "description": "Get Simple Moving Average (SMA) technical indicator for trend analysis.",
+                "tags": ["fintech", "market", "technical-indicator", "alpha-vantage", "trend-analysis"],
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -111,6 +122,7 @@ class MCPChatInterface:
             {
                 "name": "get_rsi",
                 "description": "Get Relative Strength Index (RSI) indicator measuring momentum (0-100, >70 overbought, <30 oversold).",
+                "tags": ["fintech", "market", "technical-indicator", "alpha-vantage", "momentum"],
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -122,9 +134,11 @@ class MCPChatInterface:
                     "required": ["symbol"]
                 }
             },
+            # ===== FOREIGN EXCHANGE TOOLS =====
             {
                 "name": "get_fx_rate",
                 "description": "Get real-time foreign exchange rate between two currencies.",
+                "tags": ["fintech", "currency", "forex", "alpha-vantage", "real-time"],
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -134,9 +148,11 @@ class MCPChatInterface:
                     "required": ["from_currency", "to_currency"]
                 }
             },
+            # ===== CRYPTOCURRENCY TOOLS =====
             {
                 "name": "get_crypto_rate",
                 "description": "Get real-time cryptocurrency exchange rate.",
+                "tags": ["fintech", "crypto", "digital-asset", "alpha-vantage", "real-time"],
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -146,9 +162,11 @@ class MCPChatInterface:
                     "required": ["symbol"]
                 }
             },
+            # ===== WEATHER TOOL =====
             {
                 "name": "get_city_weather",
                 "description": "Get current weather information for a specified city. Returns temperature, humidity, wind speed, and weather conditions.",
+                "tags": ["weather", "utility", "open-meteo"],
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -159,6 +177,89 @@ class MCPChatInterface:
                     },
                     "required": ["city"]
                 }
+            },
+            # ===== FRED SEARCH & DISCOVERY TOOLS =====
+            {
+                "name": "search_fred_series",
+                "description": "Search for economic indicators in FRED by keyword. Discover available economic time series matching your search criteria.",
+                "tags": ["economic-data", "fred", "economic-indicator", "search", "discoverability"],
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "search_text": {"type": "string", "description": "Keywords to search (e.g., 'unemployment', 'GDP', 'inflation')"},
+                        "search_type": {"type": "string", "description": "'full_text' (default) or 'series_id'"},
+                        "limit": {"type": "integer", "description": "Max results (1-1000, default: 50)"}
+                    },
+                    "required": ["search_text"]
+                }
+            },
+            {
+                "name": "get_fred_releases",
+                "description": "Get list of available FRED economic data releases like CPI, Employment, GDP, etc.",
+                "tags": ["economic-data", "fred", "releases", "discoverability"],
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "limit": {"type": "integer", "description": "Max releases (1-1000, default: 50)"}
+                    },
+                    "required": []
+                }
+            },
+            # ===== FRED DATA RETRIEVAL TOOLS =====
+            {
+                "name": "get_economic_indicator",
+                "description": "Get historical time series data for a specific economic indicator (UNRATE, GDP, CPI, etc.).",
+                "tags": ["economic-data", "fred", "economic-indicator", "time-series", "historical-data"],
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "series_id": {"type": "string", "description": "FRED series ID (e.g., 'UNRATE', 'GDP', 'CPIAUCSL')"},
+                        "start_date": {"type": "string", "description": "Start date (YYYY-MM-DD, optional)"},
+                        "end_date": {"type": "string", "description": "End date (YYYY-MM-DD, optional)"}
+                    },
+                    "required": ["series_id"]
+                }
+            },
+            {
+                "name": "get_series_metadata",
+                "description": "Get detailed metadata for a FRED economic series including title, units, frequency, and notes.",
+                "tags": ["economic-data", "fred", "metadata", "economic-indicator"],
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "series_id": {"type": "string", "description": "FRED series ID (e.g., 'UNRATE', 'GDP')"}
+                    },
+                    "required": ["series_id"]
+                }
+            },
+            {
+                "name": "get_category_series",
+                "description": "Get all economic series within a FRED category (Employment, Production, Income, Money, Banking, etc.).",
+                "tags": ["economic-data", "fred", "category", "economic-indicator", "discoverability"],
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "category_id": {"type": "integer", "description": "FRED category ID (e.g., 12 for employment)"},
+                        "limit": {"type": "integer", "description": "Max series (1-1000, default: 50)"}
+                    },
+                    "required": ["category_id"]
+                }
+            },
+            {
+                "name": "get_series_observations",
+                "description": "Get detailed observations for a FRED series with date filtering and unit transformations (change, percent change, log, etc.).",
+                "tags": ["economic-data", "fred", "economic-indicator", "time-series", "advanced-analysis"],
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "series_id": {"type": "string", "description": "FRED series ID"},
+                        "start_date": {"type": "string", "description": "Start date (YYYY-MM-DD, optional)"},
+                        "end_date": {"type": "string", "description": "End date (YYYY-MM-DD, optional)"},
+                        "frequency": {"type": "string", "description": "Frequency: 'd'(daily), 'w'(weekly), 'm'(monthly), 'q'(quarterly), 'a'(annual)"},
+                        "units": {"type": "string", "description": "Transform: 'lin'(levels), 'chg'(change), 'pch'(% change), 'pca'(% change annual), 'log'"}
+                    },
+                    "required": ["series_id"]
+                }
             }
         ]
 
@@ -167,25 +268,35 @@ class MCPChatInterface:
         welcome_text = """
 # MCP-FinTechCo Interactive Chat Test Utility
 
-Welcome! This interactive chat interface combines Claude AI with comprehensive financial data tools.
+Welcome! This interactive chat interface combines Claude AI with comprehensive FinTech and economic data tools.
 
 ## Available Commands:
-- Type your message to chat naturally about stocks, forex, crypto, and more
-- Ask about stock prices, technical indicators, exchange rates
+- Type your message to chat naturally about stocks, forex, crypto, economic indicators, and more
+- Ask about stock prices, technical indicators, exchange rates, economic data
 - Type `exit`, `quit`, or `bye` to end the session
 - Type `help` for all available MCP tools
 - Type `clear` to clear conversation history
 
 ## How It Works:
-When you ask financial questions, Claude automatically invokes the appropriate tools
-and integrates real-time market data into the conversation.
+When you ask financial or economic questions, Claude automatically invokes the appropriate tools
+and integrates real-time market data and economic indicators into the conversation.
 
-**Financial Tools Available:**
-- Stock Quotes (e.g., "What's Apple's stock price?")
-- Technical Indicators (SMA, RSI)
+**Available Tool Categories:**
+
+🏦 **Market & Stock Tools** (Alpha Vantage)
+- Stock Quotes & Historical Data (e.g., "What's Apple's stock price?")
+- Technical Indicators: SMA, RSI (e.g., "Is Apple overbought?")
 - Foreign Exchange Rates (e.g., "USD to EUR rate?")
 - Cryptocurrency Prices (e.g., "Bitcoin price?")
-- Historical Data & Weather
+
+📊 **Economic Data Tools** (FRED - Federal Reserve Economic Data)
+- Search for economic indicators (e.g., "Find unemployment data")
+- Economic Indicators: GDP, CPI, Unemployment (e.g., "Current unemployment rate?")
+- Economic Releases & Categories
+- Advanced series analysis with transformations
+
+🌦️ **Utility Tools**
+- Current Weather Information by City
         """
 
         panel = Panel(
@@ -324,6 +435,108 @@ and integrates real-time market data into the conversation.
                 weather_table.add_row("Humidity", f"{result['humidity']}%")
                 weather_table.add_row("Wind Speed", f"{result['wind_speed']} km/h")
                 console.print(Panel(weather_table, title="[bold green]Weather[/bold green]", border_style="green"))
+                return result
+
+            # ===== FRED TOOL HANDLERS =====
+            elif tool_name == "search_fred_series":
+                result = await search_fred_series_impl(
+                    tool_input.get("search_text"),
+                    tool_input.get("search_type", "full_text"),
+                    tool_input.get("limit", 50)
+                )
+                table = Table(title=f"Search Results: {result['search_text']}", box=box.ROUNDED, show_header=True, header_style="bold cyan")
+                table.add_column("Series ID", style="magenta", width=15)
+                table.add_column("Title", style="white", width=50)
+                table.add_column("Units", style="green", width=15)
+                table.add_column("Frequency", style="yellow", width=12)
+                for series in result['series'][:10]:  # Show first 10
+                    table.add_row(series['id'], series['title'], series['units'], series['frequency'])
+                console.print(Panel(table, title="[bold blue]FRED Series Search[/bold blue]", border_style="blue"))
+                console.print(f"[yellow]Found {result['total_count']} total results, showing {result['count']}[/yellow]")
+                return result
+
+            elif tool_name == "get_economic_indicator":
+                result = await get_economic_indicator_impl(
+                    tool_input.get("series_id"),
+                    tool_input.get("start_date"),
+                    tool_input.get("end_date")
+                )
+                console.print(f"[green]Series ID:[/green] {result['series_id']}")
+                console.print(f"[green]Observations:[/green] {result['observations_count']}")
+                table = Table(box=box.SIMPLE, show_header=True, header_style="bold cyan", padding=(0, 2))
+                table.add_column("Date", style="magenta", width=12)
+                table.add_column("Value", style="green", width=15)
+                for obs in result['observations'][-10:]:  # Show last 10
+                    table.add_row(obs['date'], f"{obs['value']:.2f}")
+                console.print(Panel(table, title="[bold blue]Economic Indicator Data[/bold blue]", border_style="blue"))
+                return result
+
+            elif tool_name == "get_series_metadata":
+                result = await get_series_metadata_impl(tool_input.get("series_id"))
+                table = Table(box=box.SIMPLE, show_header=False, padding=(0, 2))
+                table.add_column("Field", style="cyan bold", width=25)
+                table.add_column("Value", style="white", width=50)
+                table.add_row("Series ID", result['id'])
+                table.add_row("Title", result['title'])
+                table.add_row("Units", result['units'])
+                table.add_row("Frequency", result['frequency'])
+                table.add_row("Seasonal Adjustment", result['seasonal_adjustment'])
+                table.add_row("Available Since", result['observation_start'])
+                table.add_row("Current Through", result['observation_end'])
+                table.add_row("Last Updated", result['last_updated'])
+                table.add_row("Popularity", str(result['popularity']))
+                if result['notes']:
+                    table.add_row("Notes", result['notes'][:100] + "..." if len(result['notes']) > 100 else result['notes'])
+                console.print(Panel(table, title="[bold blue]Series Metadata[/bold blue]", border_style="blue"))
+                return result
+
+            elif tool_name == "get_fred_releases":
+                result = await get_fred_releases_impl(tool_input.get("limit", 50))
+                table = Table(title="FRED Economic Data Releases", box=box.ROUNDED, show_header=True, header_style="bold cyan")
+                table.add_column("Release ID", style="magenta", width=12)
+                table.add_column("Name", style="white", width=45)
+                table.add_column("Press Release", style="yellow", width=15)
+                for release in result['releases'][:15]:  # Show first 15
+                    table.add_row(str(release['id']), release['name'], "Yes" if release['press_release'] else "No")
+                console.print(Panel(table, title="[bold blue]FRED Releases[/bold blue]", border_style="blue"))
+                return result
+
+            elif tool_name == "get_category_series":
+                result = await get_category_series_impl(
+                    tool_input.get("category_id"),
+                    tool_input.get("limit", 50)
+                )
+                console.print(f"[green]Category:[/green] {result['category_name']} (ID: {result['category_id']})")
+                console.print(f"[green]Series Count:[/green] {result['series_count']}")
+                table = Table(box=box.ROUNDED, show_header=True, header_style="bold cyan")
+                table.add_column("Series ID", style="magenta", width=15)
+                table.add_column("Title", style="white", width=45)
+                table.add_column("Frequency", style="yellow", width=12)
+                for series in result['series'][:15]:  # Show first 15
+                    table.add_row(series['id'], series['title'], series['frequency'])
+                console.print(Panel(table, title=f"[bold blue]Series in {result['category_name']}[/bold blue]", border_style="blue"))
+                return result
+
+            elif tool_name == "get_series_observations":
+                result = await get_series_observations_impl(
+                    tool_input.get("series_id"),
+                    tool_input.get("start_date"),
+                    tool_input.get("end_date"),
+                    tool_input.get("frequency"),
+                    tool_input.get("units")
+                )
+                console.print(f"[green]Series ID:[/green] {result['series_id']}")
+                console.print(f"[green]Observations:[/green] {result['observations_count']}")
+                params = result['parameters']
+                if any(params.values()):
+                    params_str = ", ".join([f"{k}: {v}" for k, v in params.items() if v])
+                    console.print(f"[green]Parameters:[/green] {params_str}")
+                table = Table(box=box.SIMPLE, show_header=True, header_style="bold cyan", padding=(0, 2))
+                table.add_column("Date", style="magenta", width=12)
+                table.add_column("Value", style="green", width=15)
+                for obs in result['observations'][-15:]:  # Show last 15
+                    table.add_row(obs['date'], f"{obs['value']:.4f}")
+                console.print(Panel(table, title="[bold blue]Series Observations[/bold blue]", border_style="blue"))
                 return result
 
             else:
