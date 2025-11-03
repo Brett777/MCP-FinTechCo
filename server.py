@@ -760,6 +760,17 @@ async def search_fred_series(search_text: str, search_type: str = "full_text", l
         - total_count: Total matches available
         - series: List of matching series with id, title, units, frequency, etc.
 
+    Common Use Cases:
+        - Discover available economic indicators for a topic
+        - Find series IDs for specific economic concepts
+        - Explore FRED's coverage of an economic area
+        - Initial research before deeper data analysis
+
+    See Also:
+        - search_series_tags: Discover tags to refine your search
+        - get_series_metadata: Get detailed info about a found series
+        - get_category_series: Browse series by category instead of search
+
     Example:
         >>> await search_fred_series("unemployment rate", "full_text", 20)
         {
@@ -771,11 +782,17 @@ async def search_fred_series(search_text: str, search_type: str = "full_text", l
                 ...
             ]
         }
+
+    Notes:
+        - Use "full_text" for broad searches across all metadata fields
+        - Use "series_id" when you know the exact series identifier
+        - Results are ranked by relevance
+        - Check total_count to see if you need to refine your search
     """
     return await search_fred_series_impl(search_text, search_type, limit)
 
 
-async def get_economic_indicator_impl(series_id: str, start_date: Optional[str] = None, end_date: Optional[str] = None) -> dict:
+async def get_economic_indicator_impl(series_id: str, start_date: Optional[str] = None, end_date: Optional[str] = None, limit: int = 20) -> dict:
     """Implementation of economic indicator data retrieval."""
     if not FRED_API_KEY:
         raise Exception("FRED_API_KEY not configured in environment")
@@ -805,9 +822,9 @@ async def get_economic_indicator_impl(series_id: str, start_date: Optional[str] 
         if "observations" not in data:
             raise ValueError(f"Invalid series_id or no data available for '{series_id}'")
 
-        # Get most recent 20 observations
+        # Get most recent observations (up to limit)
         observations = []
-        for obs in data["observations"][-20:]:
+        for obs in data["observations"][-limit:]:
             if obs.get("value") != ".":  # FRED uses "." for missing values
                 observations.append({
                     "date": obs.get("date", ""),
@@ -832,36 +849,53 @@ async def get_economic_indicator_impl(series_id: str, start_date: Optional[str] 
 
 
 @mcp.tool(tags=["fred", "economic-data", "indicator", "time-series"])
-async def get_economic_indicator(series_id: str, start_date: Optional[str] = None, end_date: Optional[str] = None) -> dict:
+async def get_economic_indicator(series_id: str, start_date: Optional[str] = None, end_date: Optional[str] = None, limit: int = 20) -> dict:
     """
     Get historical time series data for an economic indicator.
 
-    Retrieves observations for a specific FRED series such as GDP, unemployment rate, CPI, etc.
+    Retrieves recent observations for a specific FRED series such as GDP, unemployment rate, CPI, etc.
+    Quick access tool for checking latest values.
 
     Args:
         series_id: FRED series identifier (e.g., "UNRATE" for unemployment, "GDP" for gross domestic product)
         start_date: Start date for observations in YYYY-MM-DD format (optional)
         end_date: End date for observations in YYYY-MM-DD format (optional)
+        limit: Maximum number of recent observations to return (default: 20, max: 100000)
 
     Returns:
         Dictionary containing:
         - series_id: The requested series identifier
         - observations_count: Number of observations returned
-        - observations: List of {date, value} pairs
+        - observations: List of {date, value} pairs (most recent observations)
+
+    Common Use Cases:
+        - Quick check of current economic indicator values
+        - Dashboard displaying latest data points
+        - Recent trend analysis over past few periods
+
+    See Also:
+        - get_series_observations: For comprehensive historical data with transformations
+        - get_series_metadata: To understand series properties before fetching data
 
     Example:
-        >>> await get_economic_indicator("UNRATE", "2020-01-01", "2023-12-31")
+        >>> await get_economic_indicator("UNRATE", limit=10)
         {
             "series_id": "UNRATE",
-            "observations_count": 48,
+            "observations_count": 10,
             "observations": [
-                {"date": "2020-01-01", "value": 3.5},
-                {"date": "2020-02-01", "value": 3.5},
+                {"date": "2025-09-01", "value": 4.2},
+                {"date": "2025-08-01", "value": 4.3},
                 ...
             ]
         }
+
+    Notes:
+        - Returns the most recent observations (last N data points)
+        - Missing values (indicated by "." in FRED) are automatically filtered out
+        - For full historical analysis, use get_series_observations instead
+        - Default limit of 20 provides a good balance for recent trend viewing
     """
-    return await get_economic_indicator_impl(series_id, start_date, end_date)
+    return await get_economic_indicator_impl(series_id, start_date, end_date, limit)
 
 
 async def get_series_metadata_impl(series_id: str) -> dict:
@@ -937,6 +971,18 @@ async def get_series_metadata(series_id: str) -> dict:
         - popularity: Popularity/usage score
         - notes: Additional descriptive notes
 
+    Common Use Cases:
+        - Understand what a series measures before fetching data
+        - Check data availability and date ranges
+        - Verify measurement units for proper interpretation
+        - Read methodology notes and definitions
+        - Validate series ID before bulk data requests
+
+    See Also:
+        - get_economic_indicator: Fetch recent data for this series
+        - get_series_observations: Get full historical data with transformations
+        - search_fred_series: Find series IDs if you don't know them
+
     Example:
         >>> await get_series_metadata("UNRATE")
         {
@@ -948,6 +994,12 @@ async def get_series_metadata(series_id: str) -> dict:
             "observation_end": "2025-10-01",
             ...
         }
+
+    Notes:
+        - Always check metadata before analyzing data to understand context
+        - Notes field often contains important methodology information
+        - Seasonal adjustment affects comparability across time periods
+        - Popularity score indicates how widely the series is used
     """
     return await get_series_metadata_impl(series_id)
 
@@ -1016,6 +1068,17 @@ async def get_fred_releases(limit: int = 50) -> dict:
         - releases_count: Number of releases returned
         - releases: List of releases with id, name, press_release status, and link
 
+    Common Use Cases:
+        - Discover major economic data releases
+        - Find release IDs for deeper exploration
+        - Browse available data sources
+        - Identify which releases have press releases with analysis
+
+    See Also:
+        - get_release_info: Get detailed info about a specific release
+        - get_release_series: See all series in a release
+        - get_release_dates: Track release publication schedule
+
     Example:
         >>> await get_fred_releases(20)
         {
@@ -1026,6 +1089,12 @@ async def get_fred_releases(limit: int = 50) -> dict:
                 ...
             ]
         }
+
+    Notes:
+        - Releases group related series published together
+        - press_release=True indicates official analysis is available
+        - Use release_id with other release tools for detailed information
+        - Major releases like Employment Situation contain many related series
     """
     return await get_fred_releases_impl(limit)
 
@@ -1119,6 +1188,18 @@ async def get_category_series(category_id: int, limit: int = 50) -> dict:
         - series_count: Number of series returned
         - series: List of series with id, title, units, frequency, etc.
 
+    Common Use Cases:
+        - Browse related economic indicators by topic
+        - Discover all series in a specific economic domain
+        - Alternative to search when you know the topic area
+        - Explore FRED's hierarchical organization
+        - Find related indicators for comprehensive analysis
+
+    See Also:
+        - search_fred_series: Search for series by keywords instead
+        - get_series_metadata: Get details about a specific series
+        - get_economic_indicator: Fetch data for a series
+
     Example:
         >>> await get_category_series(12, 20)  # Employment category
         {
@@ -1131,6 +1212,12 @@ async def get_category_series(category_id: int, limit: int = 50) -> dict:
                 ...
             ]
         }
+
+    Notes:
+        - FRED organizes data hierarchically by categories
+        - Common category IDs: 12 (Employment), 106 (Production), 32992 (Money Supply)
+        - Categories can contain hundreds of related series
+        - Use this for systematic exploration of economic topic areas
     """
     return await get_category_series_impl(category_id, limit)
 
@@ -1237,6 +1324,18 @@ async def get_series_observations(
         - parameters: The parameters used in the request
         - observations: List of {date, value} pairs with transformations applied
 
+    Common Use Cases:
+        - Full historical analysis requiring transformations
+        - Research requiring specific time periods
+        - Calculating growth rates or changes
+        - Converting data to different frequencies
+        - Economic forecasting and modeling
+
+    See Also:
+        - get_economic_indicator: Simpler tool for recent observations only
+        - get_series_metadata: Check series properties before fetching
+        - get_series_vintagedates: Track data revisions over time
+
     Example:
         >>> await get_series_observations("UNRATE", "2020-01-01", "2023-12-31", "m", "lin")
         {
@@ -1249,8 +1348,756 @@ async def get_series_observations(
                 ...
             ]
         }
+
+    Notes:
+        - Returns ALL matching observations (not limited like get_economic_indicator)
+        - Results sorted in descending order (most recent first)
+        - Transformations: "pch" for percent change, "chg" for absolute change
+        - Frequency conversion: Use "m" for monthly, "q" for quarterly, "a" for annual
+        - Missing values (FRED's ".") are automatically filtered out
     """
     return await get_series_observations_impl(series_id, start_date, end_date, frequency, units)
+
+
+async def search_series_tags_impl(search_text: str, limit: int = 100) -> dict:
+    """Implementation of FRED series search tags retrieval."""
+    if not FRED_API_KEY:
+        raise Exception("FRED_API_KEY not configured in environment")
+
+    try:
+        logger.info(f"Fetching tags for series search: {search_text}")
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{FRED_API_BASE}/series/search/tags",
+                params={
+                    "series_search_text": search_text,
+                    "limit": min(limit, 1000),
+                    "file_type": "json",
+                    "api_key": FRED_API_KEY
+                }
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        if "tags" not in data:
+            raise ValueError(f"No tags found for search '{search_text}'")
+
+        tags_list = []
+        for tag in data["tags"][:limit]:
+            tags_list.append({
+                "name": tag.get("name", ""),
+                "group_id": tag.get("group_id", ""),
+                "notes": tag.get("notes", ""),
+                "created": tag.get("created", ""),
+                "popularity": tag.get("popularity", 0),
+                "series_count": tag.get("series_count", 0)
+            })
+
+        result = {
+            "search_text": search_text,
+            "tags_count": len(tags_list),
+            "tags": tags_list
+        }
+
+        logger.info(f"Found {len(tags_list)} tags for search '{search_text}'")
+        return result
+
+    except httpx.HTTPError as e:
+        logger.error(f"HTTP error fetching series search tags: {e}")
+        raise Exception(f"Failed to fetch series search tags: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error fetching series search tags: {e}")
+        raise
+
+
+@mcp.tool(tags=["fred", "economic-data", "search", "tags", "discovery"])
+async def search_series_tags(search_text: str, limit: int = 100) -> dict:
+    """
+    Get tags for economic series matching a search query.
+
+    Discovers available tags that can be used to filter and refine series searches.
+    Tags categorize series by attributes like geography, frequency, seasonal adjustment, etc.
+
+    Args:
+        search_text: Keywords to search (e.g., "unemployment", "GDP", "inflation")
+        limit: Maximum number of tags to return (1-1000, default: 100)
+
+    Returns:
+        Dictionary containing:
+        - search_text: Original search query
+        - tags_count: Number of tags returned
+        - tags: List of tags with name, group_id, notes, popularity, series_count
+
+    Common Use Cases:
+        - Discover available tags to narrow down series searches
+        - Understand categorization of economic indicators
+        - Find related series through tag exploration
+
+    See Also:
+        - search_series_related_tags: Find tags related to a search + existing tag filters
+        - search_fred_series: Search for actual series (not tags)
+
+    Example:
+        >>> await search_series_tags("inflation", 20)
+        {
+            "search_text": "inflation",
+            "tags_count": 20,
+            "tags": [
+                {"name": "usa", "group_id": "geot", "popularity": 100, "series_count": 245, ...},
+                {"name": "monthly", "group_id": "freq", "popularity": 95, "series_count": 180, ...},
+                {"name": "nsa", "group_id": "seas", "popularity": 88, "series_count": 156, ...}
+            ]
+        }
+
+    Notes:
+        - Tags are grouped by type: geography (geot), frequency (freq), seasonal adjustment (seas), etc.
+        - Use popularity and series_count to identify most relevant tags
+        - Combine with search_series_related_tags for advanced filtering
+    """
+    return await search_series_tags_impl(search_text, limit)
+
+
+async def search_series_related_tags_impl(search_text: str, tag_names: str, limit: int = 100) -> dict:
+    """Implementation of FRED series search related tags retrieval."""
+    if not FRED_API_KEY:
+        raise Exception("FRED_API_KEY not configured in environment")
+
+    try:
+        logger.info(f"Fetching related tags for series search: {search_text}, tags: {tag_names}")
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{FRED_API_BASE}/series/search/related_tags",
+                params={
+                    "series_search_text": search_text,
+                    "tag_names": tag_names,
+                    "limit": min(limit, 1000),
+                    "file_type": "json",
+                    "api_key": FRED_API_KEY
+                }
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        if "tags" not in data:
+            raise ValueError(f"No related tags found for search '{search_text}' with tags '{tag_names}'")
+
+        tags_list = []
+        for tag in data["tags"][:limit]:
+            tags_list.append({
+                "name": tag.get("name", ""),
+                "group_id": tag.get("group_id", ""),
+                "notes": tag.get("notes", ""),
+                "created": tag.get("created", ""),
+                "popularity": tag.get("popularity", 0),
+                "series_count": tag.get("series_count", 0)
+            })
+
+        result = {
+            "search_text": search_text,
+            "filter_tags": tag_names,
+            "related_tags_count": len(tags_list),
+            "related_tags": tags_list
+        }
+
+        logger.info(f"Found {len(tags_list)} related tags for search '{search_text}' with tags '{tag_names}'")
+        return result
+
+    except httpx.HTTPError as e:
+        logger.error(f"HTTP error fetching related tags: {e}")
+        raise Exception(f"Failed to fetch related tags: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error fetching related tags: {e}")
+        raise
+
+
+@mcp.tool(tags=["fred", "economic-data", "search", "tags", "discovery", "advanced"])
+async def search_series_related_tags(search_text: str, tag_names: str, limit: int = 100) -> dict:
+    """
+    Get tags related to a series search when filtered by existing tags.
+
+    Advanced discovery tool that helps refine series searches by finding additional tags
+    that are commonly associated with your current tag filters. Enables iterative exploration
+    of economic data through tag-based navigation.
+
+    Args:
+        search_text: Keywords to search (e.g., "unemployment", "GDP", "inflation")
+        tag_names: Semicolon-delimited list of tag names to filter by (e.g., "monthly;sa")
+        limit: Maximum number of related tags to return (1-1000, default: 100)
+
+    Returns:
+        Dictionary containing:
+        - search_text: Original search query
+        - filter_tags: The tag filters applied
+        - related_tags_count: Number of related tags found
+        - related_tags: List of tags with name, group_id, notes, popularity, series_count
+
+    Common Use Cases:
+        - Iteratively refine series searches by discovering relevant tag combinations
+        - Explore how different attributes (geography, frequency, seasonal adjustment) relate
+        - Build sophisticated queries for specific economic indicator types
+
+    See Also:
+        - search_series_tags: Discover initial tags for a search
+        - search_fred_series: Execute actual series search with tags
+
+    Example:
+        >>> await search_series_related_tags("inflation", "usa;monthly", 20)
+        {
+            "search_text": "inflation",
+            "filter_tags": "usa;monthly",
+            "related_tags_count": 20,
+            "related_tags": [
+                {"name": "sa", "group_id": "seas", "popularity": 92, "series_count": 85, ...},
+                {"name": "nsa", "group_id": "seas", "popularity": 88, "series_count": 95, ...},
+                {"name": "index", "group_id": "gen", "popularity": 75, "series_count": 60, ...}
+            ]
+        }
+
+    Notes:
+        - Tag names should be separated by semicolons with no spaces
+        - Tags are grouped: geography (geot), frequency (freq), seasonal adjustment (seas), general (gen)
+        - Use this iteratively: search → get tags → filter → get related tags → refine
+        - Higher series_count indicates tags associated with more series in the filtered set
+    """
+    return await search_series_related_tags_impl(search_text, tag_names, limit)
+
+
+async def get_series_updates_impl(start_time: Optional[str] = None, end_time: Optional[str] = None, limit: int = 100) -> dict:
+    """Implementation of FRED series updates retrieval."""
+    if not FRED_API_KEY:
+        raise Exception("FRED_API_KEY not configured in environment")
+
+    try:
+        logger.info(f"Fetching recently updated series")
+
+        params = {
+            "limit": min(limit, 1000),
+            "file_type": "json",
+            "api_key": FRED_API_KEY
+        }
+
+        if start_time:
+            params["start_time"] = start_time
+        if end_time:
+            params["end_time"] = end_time
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{FRED_API_BASE}/series/updates",
+                params=params
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        if "seriess" not in data:
+            raise ValueError("Could not fetch series updates")
+
+        series_list = []
+        for series in data["seriess"][:limit]:
+            series_list.append({
+                "id": series.get("id", ""),
+                "title": series.get("title", ""),
+                "units": series.get("units", ""),
+                "frequency": series.get("frequency", ""),
+                "seasonal_adjustment": series.get("seasonal_adjustment", ""),
+                "observation_start": series.get("observation_start", ""),
+                "observation_end": series.get("observation_end", ""),
+                "last_updated": series.get("last_updated", ""),
+                "popularity": series.get("popularity", 0)
+            })
+
+        result = {
+            "filter_start_time": start_time,
+            "filter_end_time": end_time,
+            "series_count": len(series_list),
+            "series": series_list
+        }
+
+        logger.info(f"Found {len(series_list)} recently updated series")
+        return result
+
+    except httpx.HTTPError as e:
+        logger.error(f"HTTP error fetching series updates: {e}")
+        raise Exception(f"Failed to fetch series updates: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error fetching series updates: {e}")
+        raise
+
+
+@mcp.tool(tags=["fred", "economic-data", "updates", "monitoring"])
+async def get_series_updates(start_time: Optional[str] = None, end_time: Optional[str] = None, limit: int = 100) -> dict:
+    """
+    Get economic series that have been recently updated.
+
+    Monitors which FRED series have received new data or revisions, sorted by last update time.
+    Essential for tracking fresh economic data releases and data revisions.
+
+    Args:
+        start_time: Filter updates after this time in YYYY-MM-DD format (optional)
+        end_time: Filter updates before this time in YYYY-MM-DD format (optional)
+        limit: Maximum number of series to return (1-1000, default: 100)
+
+    Returns:
+        Dictionary containing:
+        - filter_start_time: Start time filter applied (if any)
+        - filter_end_time: End time filter applied (if any)
+        - series_count: Number of series returned
+        - series: List of recently updated series with metadata and last_updated timestamp
+
+    Common Use Cases:
+        - Monitor for new economic data releases
+        - Track data revisions for specific indicators
+        - Build real-time dashboards with latest economic data
+        - Alert systems for important indicator updates
+
+    See Also:
+        - get_series_metadata: Get detailed info about a specific series
+        - get_economic_indicator: Retrieve the actual data for a series
+        - get_release_dates: Track scheduled release dates
+
+    Example:
+        >>> await get_series_updates("2025-10-01", None, 50)
+        {
+            "filter_start_time": "2025-10-01",
+            "filter_end_time": null,
+            "series_count": 50,
+            "series": [
+                {
+                    "id": "UNRATE",
+                    "title": "Unemployment Rate",
+                    "last_updated": "2025-10-06T08:30:00",
+                    "observation_end": "2025-09-01",
+                    ...
+                },
+                ...
+            ]
+        }
+
+    Notes:
+        - Series are sorted by last_updated in descending order (most recent first)
+        - last_updated shows when FRED's database was updated, not the observation date
+        - Updates can be new data points or revisions to existing data
+        - Popular series (higher popularity score) tend to be updated more frequently
+    """
+    return await get_series_updates_impl(start_time, end_time, limit)
+
+
+async def get_release_info_impl(release_id: int) -> dict:
+    """Implementation of FRED release info retrieval."""
+    if not FRED_API_KEY:
+        raise Exception("FRED_API_KEY not configured in environment")
+
+    try:
+        logger.info(f"Fetching release info for release_id: {release_id}")
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{FRED_API_BASE}/release",
+                params={
+                    "release_id": release_id,
+                    "file_type": "json",
+                    "api_key": FRED_API_KEY
+                }
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        if "releases" not in data or not data["releases"]:
+            raise ValueError(f"Release {release_id} not found")
+
+        release = data["releases"][0]
+
+        result = {
+            "id": release.get("id", ""),
+            "name": release.get("name", ""),
+            "press_release": release.get("press_release", False),
+            "realtime_start": release.get("realtime_start", ""),
+            "realtime_end": release.get("realtime_end", ""),
+            "link": release.get("link", ""),
+            "notes": release.get("notes", "")
+        }
+
+        logger.info(f"Successfully fetched release info for {release_id}")
+        return result
+
+    except httpx.HTTPError as e:
+        logger.error(f"HTTP error fetching release info: {e}")
+        raise Exception(f"Failed to fetch release info: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error fetching release info: {e}")
+        raise
+
+
+@mcp.tool(tags=["fred", "economic-data", "releases", "metadata"])
+async def get_release_info(release_id: int) -> dict:
+    """
+    Get detailed information about a specific FRED economic data release.
+
+    Retrieves metadata about a particular release, including its name, publication schedule,
+    press release status, and descriptive notes.
+
+    Args:
+        release_id: FRED release identifier (e.g., 10 for "H.6 Money Stock Measures", 50 for "Employment Situation")
+
+    Returns:
+        Dictionary containing:
+        - id: Release identifier
+        - name: Full release name
+        - press_release: Whether this release has press releases
+        - realtime_start: Real-time period start date
+        - realtime_end: Real-time period end date
+        - link: URL to release information
+        - notes: Additional descriptive notes about the release
+
+    Common Use Cases:
+        - Understand the context and scope of a specific data release
+        - Check if a release includes press releases with analysis
+        - Get official links to release documentation
+        - Research release methodology and coverage
+
+    See Also:
+        - get_fred_releases: Browse all available releases
+        - get_release_series: Get all series included in a release
+        - get_release_dates: Track when release data is published
+
+    Example:
+        >>> await get_release_info(50)
+        {
+            "id": 50,
+            "name": "Employment Situation",
+            "press_release": True,
+            "realtime_start": "2025-01-01",
+            "realtime_end": "9999-12-31",
+            "link": "http://www.bls.gov/news.release/empsit.toc.htm",
+            "notes": "The Employment Situation release from the U.S. Bureau of Labor Statistics..."
+        }
+
+    Notes:
+        - Use get_fred_releases to discover release IDs
+        - press_release=True indicates official BLS/Fed commentary is available
+        - realtime_end of "9999-12-31" means the release is currently active
+        - Notes field often contains important methodological information
+    """
+    return await get_release_info_impl(release_id)
+
+
+async def get_release_series_impl(release_id: int, limit: int = 100) -> dict:
+    """Implementation of FRED release series retrieval."""
+    if not FRED_API_KEY:
+        raise Exception("FRED_API_KEY not configured in environment")
+
+    try:
+        logger.info(f"Fetching series for release: {release_id}")
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{FRED_API_BASE}/release/series",
+                params={
+                    "release_id": release_id,
+                    "limit": min(limit, 1000),
+                    "file_type": "json",
+                    "api_key": FRED_API_KEY
+                }
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        if "seriess" not in data:
+            raise ValueError(f"Could not fetch series for release {release_id}")
+
+        series_list = []
+        for series in data["seriess"][:limit]:
+            series_list.append({
+                "id": series.get("id", ""),
+                "title": series.get("title", ""),
+                "units": series.get("units", ""),
+                "frequency": series.get("frequency", ""),
+                "seasonal_adjustment": series.get("seasonal_adjustment", ""),
+                "observation_start": series.get("observation_start", ""),
+                "observation_end": series.get("observation_end", ""),
+                "last_updated": series.get("last_updated", ""),
+                "popularity": series.get("popularity", 0)
+            })
+
+        result = {
+            "release_id": release_id,
+            "series_count": len(series_list),
+            "series": series_list
+        }
+
+        logger.info(f"Found {len(series_list)} series for release {release_id}")
+        return result
+
+    except httpx.HTTPError as e:
+        logger.error(f"HTTP error fetching release series: {e}")
+        raise Exception(f"Failed to fetch release series: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error fetching release series: {e}")
+        raise
+
+
+@mcp.tool(tags=["fred", "economic-data", "releases", "series"])
+async def get_release_series(release_id: int, limit: int = 100) -> dict:
+    """
+    Get all economic series included in a specific FRED release.
+
+    Lists all data series that are part of a particular economic data release, allowing you
+    to discover all indicators published together.
+
+    Args:
+        release_id: FRED release identifier (e.g., 10 for "H.6 Money Stock Measures", 50 for "Employment Situation")
+        limit: Maximum number of series to return (1-1000, default: 100)
+
+    Returns:
+        Dictionary containing:
+        - release_id: The requested release identifier
+        - series_count: Number of series returned
+        - series: List of series with id, title, units, frequency, dates, etc.
+
+    Common Use Cases:
+        - Discover all indicators in a major economic release (e.g., Employment Situation)
+        - Analyze comprehensive release coverage
+        - Build dashboards tracking all components of a release
+        - Compare related indicators from the same source
+
+    See Also:
+        - get_release_info: Get metadata about the release
+        - get_fred_releases: Browse all available releases
+        - get_series_metadata: Get detailed info about a specific series
+
+    Example:
+        >>> await get_release_series(50, 50)  # Employment Situation
+        {
+            "release_id": 50,
+            "series_count": 50,
+            "series": [
+                {
+                    "id": "UNRATE",
+                    "title": "Unemployment Rate",
+                    "units": "Percent",
+                    "frequency": "Monthly",
+                    "seasonal_adjustment": "Seasonally Adjusted",
+                    ...
+                },
+                {
+                    "id": "PAYEMS",
+                    "title": "All Employees, Total Nonfarm",
+                    "units": "Thousands of Persons",
+                    ...
+                },
+                ...
+            ]
+        }
+
+    Notes:
+        - Major releases like Employment Situation contain hundreds of series
+        - Series are typically related and published simultaneously
+        - Use this to understand the full scope of what a release covers
+        - Popular series (higher popularity) are typically the headline indicators
+    """
+    return await get_release_series_impl(release_id, limit)
+
+
+async def get_release_dates_impl(release_id: int, limit: int = 100) -> dict:
+    """Implementation of FRED release dates retrieval."""
+    if not FRED_API_KEY:
+        raise Exception("FRED_API_KEY not configured in environment")
+
+    try:
+        logger.info(f"Fetching release dates for release: {release_id}")
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{FRED_API_BASE}/release/dates",
+                params={
+                    "release_id": release_id,
+                    "limit": min(limit, 1000),
+                    "sort_order": "desc",  # Most recent first
+                    "file_type": "json",
+                    "api_key": FRED_API_KEY
+                }
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        if "release_dates" not in data:
+            raise ValueError(f"Could not fetch release dates for release {release_id}")
+
+        dates_list = []
+        for date_info in data["release_dates"][:limit]:
+            dates_list.append({
+                "release_id": date_info.get("release_id", release_id),
+                "date": date_info.get("date", "")
+            })
+
+        result = {
+            "release_id": release_id,
+            "dates_count": len(dates_list),
+            "release_dates": dates_list
+        }
+
+        logger.info(f"Found {len(dates_list)} release dates for release {release_id}")
+        return result
+
+    except httpx.HTTPError as e:
+        logger.error(f"HTTP error fetching release dates: {e}")
+        raise Exception(f"Failed to fetch release dates: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error fetching release dates: {e}")
+        raise
+
+
+@mcp.tool(tags=["fred", "economic-data", "releases", "schedule", "monitoring"])
+async def get_release_dates(release_id: int, limit: int = 100) -> dict:
+    """
+    Get historical and upcoming release dates for a FRED economic data release.
+
+    Retrieves the publication schedule for a specific release, showing when data has been
+    and will be published. Essential for anticipating new data and understanding release patterns.
+
+    Args:
+        release_id: FRED release identifier (e.g., 10 for "H.6 Money Stock Measures", 50 for "Employment Situation")
+        limit: Maximum number of dates to return (1-1000, default: 100)
+
+    Returns:
+        Dictionary containing:
+        - release_id: The requested release identifier
+        - dates_count: Number of dates returned
+        - release_dates: List of release dates (most recent first)
+
+    Common Use Cases:
+        - Schedule monitoring for upcoming economic data releases
+        - Understand publication frequency and patterns
+        - Build calendars for data availability
+        - Plan analysis around data release timing
+        - Track historical release schedule
+
+    See Also:
+        - get_release_info: Get metadata about the release
+        - get_release_series: See what series are in the release
+        - get_series_updates: Track when series data actually updated
+
+    Example:
+        >>> await get_release_dates(50, 20)  # Employment Situation
+        {
+            "release_id": 50,
+            "dates_count": 20,
+            "release_dates": [
+                {"release_id": 50, "date": "2025-11-01"},
+                {"release_id": 50, "date": "2025-10-04"},
+                {"release_id": 50, "date": "2025-09-06"},
+                ...
+            ]
+        }
+
+    Notes:
+        - Dates are sorted in descending order (most recent first)
+        - Future dates indicate scheduled upcoming releases
+        - Release timing is typically consistent (e.g., first Friday of month)
+        - Use this to anticipate when new data will be available
+        - Major economic releases like Employment Situation have fixed schedules
+    """
+    return await get_release_dates_impl(release_id, limit)
+
+
+async def get_series_vintagedates_impl(series_id: str, limit: int = 100) -> dict:
+    """Implementation of FRED series vintage dates retrieval."""
+    if not FRED_API_KEY:
+        raise Exception("FRED_API_KEY not configured in environment")
+
+    try:
+        logger.info(f"Fetching vintage dates for series: {series_id}")
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{FRED_API_BASE}/series/vintagedates",
+                params={
+                    "series_id": series_id,
+                    "limit": min(limit, 10000),
+                    "sort_order": "desc",  # Most recent first
+                    "file_type": "json",
+                    "api_key": FRED_API_KEY
+                }
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        if "vintage_dates" not in data:
+            raise ValueError(f"Could not fetch vintage dates for series '{series_id}'")
+
+        vintage_dates = data["vintage_dates"][:limit]
+
+        result = {
+            "series_id": series_id,
+            "vintages_count": len(vintage_dates),
+            "vintage_dates": vintage_dates
+        }
+
+        logger.info(f"Found {len(vintage_dates)} vintage dates for series {series_id}")
+        return result
+
+    except httpx.HTTPError as e:
+        logger.error(f"HTTP error fetching vintage dates: {e}")
+        raise Exception(f"Failed to fetch vintage dates: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error fetching vintage dates: {e}")
+        raise
+
+
+@mcp.tool(tags=["fred", "economic-data", "series", "revisions", "research", "advanced"])
+async def get_series_vintagedates(series_id: str, limit: int = 100) -> dict:
+    """
+    Get vintage dates showing when a FRED series was revised or updated.
+
+    Returns all dates when data values for a series were revised, added, or released.
+    Critical for economic research studying data revisions and real-time vs. revised data.
+
+    Args:
+        series_id: FRED series identifier (e.g., "UNRATE", "GDP", "CPIAUCSL")
+        limit: Maximum number of vintage dates to return (1-10000, default: 100)
+
+    Returns:
+        Dictionary containing:
+        - series_id: The requested series identifier
+        - vintages_count: Number of vintage dates returned
+        - vintage_dates: List of dates when series data was revised (most recent first)
+
+    Common Use Cases:
+        - Study economic data revision patterns and magnitude
+        - Research real-time vs. final data for forecasting analysis
+        - Understand data reliability and revision frequency
+        - Academic research on data quality and measurement
+        - Track how initial estimates evolve over time
+
+    See Also:
+        - get_series_metadata: Get basic info about a series
+        - get_series_observations: Get the actual data values
+        - get_series_updates: Track recent series updates
+
+    Example:
+        >>> await get_series_vintagedates("GDP", 20)
+        {
+            "series_id": "GDP",
+            "vintages_count": 20,
+            "vintage_dates": [
+                "2025-10-30",
+                "2025-09-26",
+                "2025-08-29",
+                ...
+            ]
+        }
+
+    Notes:
+        - Each vintage date represents a snapshot of the series at that point in time
+        - Economic series like GDP are frequently revised as better data becomes available
+        - Initial estimates can differ significantly from final revised values
+        - ALFRED (Archival FRED) provides historical vintages for research
+        - High revision frequency may indicate measurement challenges
+        - Use this to understand the evolution of economic statistics over time
+    """
+    return await get_series_vintagedates_impl(series_id, limit)
 
 
 if __name__ == "__main__":

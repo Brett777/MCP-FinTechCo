@@ -168,6 +168,51 @@ Search for economic indicators in FRED database by keyword.
 }
 ```
 
+#### search_series_tags
+**(NEW)** Discover categorization tags for economic series matching a search query.
+
+**Parameters:**
+- `search_text` (string): Keywords to search (e.g., "inflation", "employment")
+- `limit` (integer): Max tags (1-1000, default: 100)
+
+**Returns:**
+```json
+{
+  "search_text": "inflation",
+  "tags_count": 20,
+  "tags": [
+    {
+      "name": "usa",
+      "group_id": "geot",
+      "popularity": 100,
+      "series_count": 245,
+      "notes": "Geographic region: United States"
+    },
+    ...
+  ]
+}
+```
+
+**Use Cases:**
+- Discover available tags to refine series searches
+- Understand how economic indicators are categorized
+- Find related series through tag exploration
+
+#### search_series_related_tags
+**(NEW)** Find tags related to a search when filtered by existing tags. Advanced exploration tool.
+
+**Parameters:**
+- `search_text` (string): Keywords to search
+- `tag_names` (string): Semicolon-delimited tag names (e.g., "monthly;sa")
+- `limit` (integer): Max related tags (1-1000, default: 100)
+
+**Returns:** Related tags that commonly appear with the filter tags
+
+**Use Cases:**
+- Iteratively refine searches by discovering relevant tag combinations
+- Explore how attributes (geography, frequency, seasonal adjustment) relate
+- Build sophisticated queries for specific indicator types
+
 #### get_fred_releases
 Get list of available FRED economic releases (CPI, Employment, GDP, etc.).
 
@@ -176,21 +221,119 @@ Get list of available FRED economic releases (CPI, Employment, GDP, etc.).
 
 **Returns:** List of economic releases with metadata
 
+#### get_series_updates
+**(NEW)** Monitor which economic series have been recently updated.
+
+**Parameters:**
+- `start_time` (string): Filter updates after this time (YYYY-MM-DD, optional)
+- `end_time` (string): Filter updates before this time (YYYY-MM-DD, optional)
+- `limit` (integer): Max series (1-1000, default: 100)
+
+**Returns:**
+```json
+{
+  "series_count": 50,
+  "series": [
+    {
+      "id": "UNRATE",
+      "title": "Unemployment Rate",
+      "last_updated": "2025-11-03T08:30:00",
+      "observation_end": "2025-10-01",
+      ...
+    },
+    ...
+  ]
+}
+```
+
+**Use Cases:**
+- Track new economic data releases
+- Monitor data revisions for specific indicators
+- Build real-time dashboards with latest data
+- Create alert systems for important updates
+
+### FRED Release Management
+
+#### get_release_info
+**(NEW)** Get detailed information about a specific FRED economic data release.
+
+**Parameters:**
+- `release_id` (integer): FRED release ID (e.g., 10, 50)
+
+**Returns:**
+```json
+{
+  "id": 50,
+  "name": "Employment Situation",
+  "press_release": true,
+  "realtime_start": "2025-01-01",
+  "realtime_end": "9999-12-31",
+  "link": "http://www.bls.gov/news.release/empsit.toc.htm",
+  "notes": "The Employment Situation release from the U.S. Bureau of Labor Statistics..."
+}
+```
+
+**Use Cases:**
+- Understand scope and context of specific releases
+- Access official release documentation
+- Check for press releases with analysis
+
+#### get_release_series
+**(NEW)** Get all economic series included in a specific FRED release.
+
+**Parameters:**
+- `release_id` (integer): FRED release ID
+- `limit` (integer): Max series (1-1000, default: 100)
+
+**Returns:** List of all data series published together in the release
+
+**Use Cases:**
+- Discover all indicators in major releases (e.g., Employment Situation)
+- Analyze comprehensive release coverage
+- Build dashboards tracking all components of a release
+
+#### get_release_dates
+**(NEW)** Get historical and upcoming release dates for FRED economic data.
+
+**Parameters:**
+- `release_id` (integer): FRED release ID
+- `limit` (integer): Max dates (1-1000, default: 100)
+
+**Returns:**
+```json
+{
+  "release_id": 50,
+  "dates_count": 20,
+  "release_dates": [
+    {"release_id": 50, "date": "2025-11-01"},
+    {"release_id": 50, "date": "2025-10-04"},
+    ...
+  ]
+}
+```
+
+**Use Cases:**
+- Schedule monitoring for upcoming releases
+- Understand publication frequency patterns
+- Plan analysis around data release timing
+- Track historical release schedule
+
 ### FRED Data Retrieval
 
 #### get_economic_indicator
-Get historical time series data for a specific economic indicator.
+Get recent time series data for a specific economic indicator.
 
 **Parameters:**
 - `series_id` (string): FRED series ID (e.g., "UNRATE", "GDP", "CPIAUCSL")
 - `start_date` (string): Start date in YYYY-MM-DD format (optional)
 - `end_date` (string): End date in YYYY-MM-DD format (optional)
+- `limit` (integer): **(NEW)** Max recent observations (default: 20, max: 100000)
 
 **Returns:**
 ```json
 {
   "series_id": "UNRATE",
-  "observations_count": 48,
+  "observations_count": 20,
   "observations": [
     {"date": "2025-10-01", "value": 4.1},
     {"date": "2025-09-01", "value": 4.2},
@@ -198,6 +341,13 @@ Get historical time series data for a specific economic indicator.
   ]
 }
 ```
+
+**Use Cases:**
+- Quick check of current indicator values
+- Dashboard displaying latest data points
+- Recent trend analysis
+
+**Note:** For comprehensive historical analysis with transformations, use `get_series_observations` instead.
 
 #### get_series_metadata
 Get detailed metadata for a FRED series.
@@ -239,6 +389,42 @@ Get detailed observations with advanced filtering and transformations.
 - `units` (string): Transformation - "lin"(levels), "chg"(change), "pch"(% change), "pca"(% change annual), "log"(log scale)
 
 **Returns:** Observations with specified transformations applied
+
+**Use Cases:**
+- Full historical analysis requiring transformations
+- Research requiring specific time periods
+- Calculating growth rates or changes
+- Economic forecasting and modeling
+
+#### get_series_vintagedates
+**(NEW)** Get vintage dates showing when a FRED series was revised or updated.
+
+**Parameters:**
+- `series_id` (string): FRED series ID (e.g., "GDP", "UNRATE")
+- `limit` (integer): Max vintage dates (1-10000, default: 100)
+
+**Returns:**
+```json
+{
+  "series_id": "GDP",
+  "vintages_count": 50,
+  "vintage_dates": [
+    "2025-10-30",
+    "2025-09-26",
+    "2025-08-29",
+    ...
+  ]
+}
+```
+
+**Use Cases:**
+- Study economic data revision patterns and magnitude
+- Research real-time vs. final data for forecasting analysis
+- Understand data reliability and revision frequency
+- Academic research on data quality and measurement
+- Track how initial estimates evolve over time
+
+**Note:** Each vintage date represents a snapshot of the series at that point in time. Series like GDP are frequently revised as better data becomes available. ALFRED (Archival FRED) provides historical vintages for research.
 
 ### Popular FRED Series IDs
 
@@ -653,6 +839,13 @@ For issues, questions, or contributions:
 
 ---
 
-**Version:** 2.0.0
-**Last Updated:** 2025-11-02
+**Version:** 2.1.0
+**Last Updated:** 2025-11-03
 **Primary Focus:** Financial Technology & Market Data
+
+**Latest Enhancements (v2.1.0):**
+- Added 7 new FRED tools for tag-based discovery, release management, and data revision tracking
+- Enhanced `get_economic_indicator` with configurable observation limit
+- Improved all FRED tool docstrings with use cases and cross-references
+- Comprehensive test coverage for all new tools
+- FRED API coverage increased from 16% to 35%

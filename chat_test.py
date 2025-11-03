@@ -41,7 +41,15 @@ from server import (
     get_series_metadata_impl,
     get_fred_releases_impl,
     get_category_series_impl,
-    get_series_observations_impl
+    get_series_observations_impl,
+    # New FRED tools
+    search_series_tags_impl,
+    search_series_related_tags_impl,
+    get_series_updates_impl,
+    get_release_info_impl,
+    get_release_series_impl,
+    get_release_dates_impl,
+    get_series_vintagedates_impl
 )
 
 # Load environment variables
@@ -186,6 +194,44 @@ class MCPChatInterface:
                 }
             },
             {
+                "name": "search_series_tags",
+                "description": "Get tags for economic series matching a search query. Discover categorization and filtering tags.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "search_text": {"type": "string", "description": "Keywords to search (e.g., 'inflation', 'employment')"},
+                        "limit": {"type": "integer", "description": "Max tags (1-1000, default: 100)"}
+                    },
+                    "required": ["search_text"]
+                }
+            },
+            {
+                "name": "search_series_related_tags",
+                "description": "Get tags related to a series search with existing tag filters. Advanced tag-based exploration tool.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "search_text": {"type": "string", "description": "Keywords to search"},
+                        "tag_names": {"type": "string", "description": "Semicolon-delimited tag names (e.g., 'monthly;sa')"},
+                        "limit": {"type": "integer", "description": "Max tags (1-1000, default: 100)"}
+                    },
+                    "required": ["search_text", "tag_names"]
+                }
+            },
+            {
+                "name": "get_series_updates",
+                "description": "Get economic series that have been recently updated. Monitor new data releases and revisions.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "start_time": {"type": "string", "description": "Filter updates after this time (YYYY-MM-DD, optional)"},
+                        "end_time": {"type": "string", "description": "Filter updates before this time (YYYY-MM-DD, optional)"},
+                        "limit": {"type": "integer", "description": "Max series (1-1000, default: 100)"}
+                    },
+                    "required": []
+                }
+            },
+            {
                 "name": "get_fred_releases",
                 "description": "Get list of available FRED economic data releases like CPI, Employment, GDP, etc.",
                 "input_schema": {
@@ -194,6 +240,42 @@ class MCPChatInterface:
                         "limit": {"type": "integer", "description": "Max releases (1-1000, default: 50)"}
                     },
                     "required": []
+                }
+            },
+            # ===== FRED RELEASE MANAGEMENT TOOLS =====
+            {
+                "name": "get_release_info",
+                "description": "Get detailed information about a specific FRED economic data release.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "release_id": {"type": "integer", "description": "FRED release ID (e.g., 10, 50)"}
+                    },
+                    "required": ["release_id"]
+                }
+            },
+            {
+                "name": "get_release_series",
+                "description": "Get all economic series included in a specific FRED release.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "release_id": {"type": "integer", "description": "FRED release ID"},
+                        "limit": {"type": "integer", "description": "Max series (1-1000, default: 100)"}
+                    },
+                    "required": ["release_id"]
+                }
+            },
+            {
+                "name": "get_release_dates",
+                "description": "Get historical and upcoming release dates for a FRED economic data release.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "release_id": {"type": "integer", "description": "FRED release ID"},
+                        "limit": {"type": "integer", "description": "Max dates (1-1000, default: 100)"}
+                    },
+                    "required": ["release_id"]
                 }
             },
             # ===== FRED DATA RETRIEVAL TOOLS =====
@@ -244,6 +326,18 @@ class MCPChatInterface:
                         "end_date": {"type": "string", "description": "End date (YYYY-MM-DD, optional)"},
                         "frequency": {"type": "string", "description": "Frequency: 'd'(daily), 'w'(weekly), 'm'(monthly), 'q'(quarterly), 'a'(annual)"},
                         "units": {"type": "string", "description": "Transform: 'lin'(levels), 'chg'(change), 'pch'(% change), 'pca'(% change annual), 'log'"}
+                    },
+                    "required": ["series_id"]
+                }
+            },
+            {
+                "name": "get_series_vintagedates",
+                "description": "Get vintage dates showing when a FRED series was revised or updated. Critical for research on data revisions.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "series_id": {"type": "string", "description": "FRED series ID (e.g., 'GDP', 'UNRATE')"},
+                        "limit": {"type": "integer", "description": "Max vintage dates (1-10000, default: 100)"}
                     },
                     "required": ["series_id"]
                 }
@@ -524,6 +618,118 @@ and integrates real-time market data and economic indicators into the conversati
                 for obs in result['observations'][-15:]:  # Show last 15
                     table.add_row(obs['date'], f"{obs['value']:.4f}")
                 console.print(Panel(table, title="[bold blue]Series Observations[/bold blue]", border_style="blue"))
+                return result
+
+            # ===== NEW FRED TOOL HANDLERS =====
+            elif tool_name == "search_series_tags":
+                result = await search_series_tags_impl(
+                    tool_input.get("search_text"),
+                    tool_input.get("limit", 100)
+                )
+                console.print(f"[green]Search:[/green] {result['search_text']}")
+                console.print(f"[green]Tags Found:[/green] {result['tags_count']}")
+                table = Table(title="Series Tags", box=box.ROUNDED, show_header=True, header_style="bold cyan")
+                table.add_column("Tag Name", style="magenta", width=20)
+                table.add_column("Group", style="yellow", width=10)
+                table.add_column("Series Count", style="green", width=12)
+                table.add_column("Popularity", style="cyan", width=10)
+                for tag in result['tags'][:15]:  # Show first 15
+                    table.add_row(tag['name'], tag['group_id'], str(tag['series_count']), str(tag['popularity']))
+                console.print(Panel(table, title="[bold blue]FRED Series Tags[/bold blue]", border_style="blue"))
+                return result
+
+            elif tool_name == "search_series_related_tags":
+                result = await search_series_related_tags_impl(
+                    tool_input.get("search_text"),
+                    tool_input.get("tag_names"),
+                    tool_input.get("limit", 100)
+                )
+                console.print(f"[green]Search:[/green] {result['search_text']}")
+                console.print(f"[green]Filter Tags:[/green] {result['filter_tags']}")
+                console.print(f"[green]Related Tags Found:[/green] {result['related_tags_count']}")
+                table = Table(title="Related Tags", box=box.ROUNDED, show_header=True, header_style="bold cyan")
+                table.add_column("Tag Name", style="magenta", width=20)
+                table.add_column("Group", style="yellow", width=10)
+                table.add_column("Series Count", style="green", width=12)
+                for tag in result['related_tags'][:15]:  # Show first 15
+                    table.add_row(tag['name'], tag['group_id'], str(tag['series_count']))
+                console.print(Panel(table, title="[bold blue]Related Tags[/bold blue]", border_style="blue"))
+                return result
+
+            elif tool_name == "get_series_updates":
+                result = await get_series_updates_impl(
+                    tool_input.get("start_time"),
+                    tool_input.get("end_time"),
+                    tool_input.get("limit", 100)
+                )
+                console.print(f"[green]Recently Updated Series:[/green] {result['series_count']}")
+                if result['filter_start_time']:
+                    console.print(f"[green]From:[/green] {result['filter_start_time']}")
+                table = Table(title="Recently Updated Series", box=box.ROUNDED, show_header=True, header_style="bold cyan")
+                table.add_column("Series ID", style="magenta", width=15)
+                table.add_column("Title", style="white", width=40)
+                table.add_column("Last Updated", style="green", width=20)
+                for series in result['series'][:15]:  # Show first 15
+                    table.add_row(series['id'], series['title'], series['last_updated'])
+                console.print(Panel(table, title="[bold blue]Series Updates[/bold blue]", border_style="blue"))
+                return result
+
+            elif tool_name == "get_release_info":
+                result = await get_release_info_impl(tool_input.get("release_id"))
+                table = Table(box=box.SIMPLE, show_header=False, padding=(0, 2))
+                table.add_column("Field", style="cyan bold", width=25)
+                table.add_column("Value", style="white", width=50)
+                table.add_row("Release ID", str(result['id']))
+                table.add_row("Name", result['name'])
+                table.add_row("Press Release", "Yes" if result['press_release'] else "No")
+                table.add_row("Link", result['link'])
+                if result['notes']:
+                    table.add_row("Notes", result['notes'][:150] + "..." if len(result['notes']) > 150 else result['notes'])
+                console.print(Panel(table, title="[bold blue]Release Info[/bold blue]", border_style="blue"))
+                return result
+
+            elif tool_name == "get_release_series":
+                result = await get_release_series_impl(
+                    tool_input.get("release_id"),
+                    tool_input.get("limit", 100)
+                )
+                console.print(f"[green]Release ID:[/green] {result['release_id']}")
+                console.print(f"[green]Series Count:[/green] {result['series_count']}")
+                table = Table(title="Series in Release", box=box.ROUNDED, show_header=True, header_style="bold cyan")
+                table.add_column("Series ID", style="magenta", width=15)
+                table.add_column("Title", style="white", width=40)
+                table.add_column("Frequency", style="yellow", width=12)
+                for series in result['series'][:15]:  # Show first 15
+                    table.add_row(series['id'], series['title'], series['frequency'])
+                console.print(Panel(table, title="[bold blue]Release Series[/bold blue]", border_style="blue"))
+                return result
+
+            elif tool_name == "get_release_dates":
+                result = await get_release_dates_impl(
+                    tool_input.get("release_id"),
+                    tool_input.get("limit", 100)
+                )
+                console.print(f"[green]Release ID:[/green] {result['release_id']}")
+                console.print(f"[green]Dates Count:[/green] {result['dates_count']}")
+                table = Table(title="Release Dates", box=box.ROUNDED, show_header=True, header_style="bold cyan")
+                table.add_column("Date", style="green", width=15)
+                for date_info in result['release_dates'][:20]:  # Show first 20
+                    table.add_row(date_info['date'])
+                console.print(Panel(table, title="[bold blue]Release Schedule[/bold blue]", border_style="blue"))
+                return result
+
+            elif tool_name == "get_series_vintagedates":
+                result = await get_series_vintagedates_impl(
+                    tool_input.get("series_id"),
+                    tool_input.get("limit", 100)
+                )
+                console.print(f"[green]Series ID:[/green] {result['series_id']}")
+                console.print(f"[green]Vintage Dates:[/green] {result['vintages_count']}")
+                table = Table(title=f"Vintage Dates for {result['series_id']}", box=box.ROUNDED, show_header=True, header_style="bold cyan")
+                table.add_column("Vintage Date", style="green", width=15)
+                for vdate in result['vintage_dates'][:20]:  # Show first 20
+                    table.add_row(vdate)
+                console.print(Panel(table, title="[bold blue]Series Revision History[/bold blue]", border_style="blue"))
                 return result
 
             else:
