@@ -1,43 +1,124 @@
 # MCP-FinTechCo Server
 
-A production-ready Modular Command Processor (MCP) server built with FastMCP 2.0, designed for financial technology applications and data services.
+A production-ready Modular Command Processor (MCP) server built with FastMCP 2.0, providing comprehensive financial technology tools and data services.
 
 ## Overview
 
-MCP-FinTechCo is a scalable MCP server initially focused on providing weather data services, with plans for rapid expansion into additional financial technology tools. Built on FastMCP 2.0, it provides a robust foundation for creating and deploying AI-accessible tools and services.
+MCP-FinTechCo is a scalable FinTech-focused MCP server designed for real-world financial applications, algorithmic trading, portfolio management, and market analysis. Built on FastMCP 2.0, it provides robust access to real-time market data, technical indicators, foreign exchange rates, and cryptocurrency information through the industry-standard Alpha Vantage API.
 
 ### Key Features
 
-- **FastMCP 2.0 Framework**: Modern, production-ready MCP implementation
-- **Weather Data Tool**: Real-time weather information using Open-Meteo API
+- **FastMCP 2.0 Framework**: Modern, production-ready MCP implementation optimized for financial data
+- **Alpha Vantage Integration**: Comprehensive access to global financial markets
+- **Real-Time Market Data**: Stock quotes, FX rates, and cryptocurrency prices
+- **Technical Analysis**: Built-in indicators (SMA, RSI, MACD, and more)
 - **Cloud-Ready**: Designed for deployment on Google Cloud Platform
-- **Extensible Architecture**: Easy to add new tools and capabilities
-- **Comprehensive Logging**: Built-in logging for monitoring and debugging
-- **Environment-Based Configuration**: Flexible configuration via environment variables
+- **Extensible Architecture**: Easy to add new financial tools and data sources
+- **Interactive Testing**: CLI chat interface powered by Claude AI
+- **Comprehensive Logging**: Built-in monitoring and debugging capabilities
 
-## Initial Tools
+## Financial Data Tools
 
-### get_city_weather
+### Stock Market Tools
 
-Retrieves current weather information for any city worldwide.
+#### get_stock_quote
+Get real-time stock quotes for any global equity.
 
 **Parameters:**
-- `city` (string): Name of the city (e.g., "New York", "London", "Tokyo")
+- `symbol` (string): Stock ticker symbol (e.g., "AAPL", "MSFT", "TSLA")
 
 **Returns:**
 ```json
 {
-  "location": "San Francisco, California, United States",
-  "latitude": 37.7749,
-  "longitude": -122.4194,
-  "temperature": 18.5,
-  "temperature_fahrenheit": 65.3,
-  "humidity": 72,
-  "wind_speed": 15.3,
-  "weather_code": 2,
-  "conditions": "Partly cloudy"
+  "symbol": "AAPL",
+  "price": 178.50,
+  "change": 2.35,
+  "change_percent": "1.33%",
+  "volume": 45829304,
+  "latest_trading_day": "2025-11-02",
+  "previous_close": 176.15,
+  "open": 177.20,
+  "high": 179.10,
+  "low": 176.80
 }
 ```
+
+#### get_stock_daily
+Retrieve daily time series data (OHLCV - Open, High, Low, Close, Volume).
+
+**Parameters:**
+- `symbol` (string): Stock ticker symbol
+- `outputsize` (string): "compact" (100 days) or "full" (20+ years)
+
+**Returns:** Historical daily price data with dates, OHLCV values
+
+### Technical Indicators
+
+#### get_sma
+Simple Moving Average - identifies trends and support/resistance levels.
+
+**Parameters:**
+- `symbol` (string): Stock ticker
+- `interval` (string): "daily", "weekly", "monthly", or intraday ("1min", "5min", etc.)
+- `time_period` (int): Number of data points (default: 20)
+- `series_type` (string): "close", "open", "high", "low"
+
+**Returns:** Time series of SMA values
+
+#### get_rsi
+Relative Strength Index - measures momentum and overbought/oversold conditions.
+
+**Parameters:**
+- `symbol` (string): Stock ticker
+- `interval` (string): Time interval
+- `time_period` (int): Lookback period (default: 14)
+- `series_type` (string): Price type
+
+**Returns:** RSI values (0-100 scale, >70 = overbought, <30 = oversold)
+
+### Foreign Exchange
+
+#### get_fx_rate
+Get real-time foreign exchange rates between any two currencies.
+
+**Parameters:**
+- `from_currency` (string): Source currency code (e.g., "USD", "EUR", "GBP")
+- `to_currency` (string): Target currency code (e.g., "JPY", "CHF", "AUD")
+
+**Returns:**
+```json
+{
+  "from_currency": "USD",
+  "to_currency": "EUR",
+  "exchange_rate": 0.9234,
+  "bid_price": 0.9233,
+  "ask_price": 0.9235,
+  "last_refreshed": "2025-11-02 20:15:00"
+}
+```
+
+### Cryptocurrency
+
+#### get_crypto_rate
+Get real-time cryptocurrency exchange rates.
+
+**Parameters:**
+- `symbol` (string): Crypto symbol (e.g., "BTC", "ETH", "DOGE")
+- `market` (string): Market currency (default: "USD")
+
+**Returns:** Real-time crypto price, bid/ask spread, and metadata
+
+### Utility Tools
+
+#### get_city_weather
+Get current weather information for any city (demonstration of extensibility).
+
+**Parameters:**
+- `city` (string): City name (e.g., "New York", "London")
+
+**Returns:** Temperature, humidity, wind speed, and conditions
+
+*Note: The weather tool demonstrates the server's extensibility beyond financial data. Future versions may include additional utility tools.*
 
 ## Installation
 
@@ -46,6 +127,7 @@ Retrieves current weather information for any city worldwide.
 - Python 3.11 or higher
 - pip (Python package manager)
 - Git
+- Alpha Vantage API key (free at https://www.alphavantage.co/support/#api-key)
 
 ### Local Setup
 
@@ -79,7 +161,11 @@ pip install -r requirements.txt
 cp .env.sample .env
 ```
 
-Edit `.env` with your preferred settings (defaults work for local testing).
+Edit `.env` and add your API keys:
+```bash
+ALPHA_VANTAGE_API_KEY=your-key-here
+ANTHROPIC_API_KEY=your-key-here  # For chat_test.py
+```
 
 5. **Run the server:**
 ```bash
@@ -95,7 +181,7 @@ python server.py
 python server.py
 ```
 
-**With Custom Environment:**
+**With Custom Configuration:**
 ```bash
 export LOG_LEVEL=DEBUG
 export MCP_SERVER_PORT=8080
@@ -109,7 +195,7 @@ python server.py
 python test_client.py
 ```
 
-This will run a series of automated tests to validate the server's functionality.
+This runs automated tests to validate server functionality.
 
 **Interactive Chat Test Utility:**
 ```bash
@@ -156,47 +242,53 @@ The server uses environment variables for configuration. See `.env.sample` for a
 
 | Variable | Description | Default |
 |----------|-------------|---------|
+| `ALPHA_VANTAGE_API_KEY` | Alpha Vantage API key (required) | - |
 | `MCP_SERVER_NAME` | Server name | mcp-fintechco-server |
 | `MCP_SERVER_VERSION` | Server version | 1.0.0 |
 | `MCP_SERVER_PORT` | Server port | 8000 |
 | `LOG_LEVEL` | Logging level | INFO |
 | `ENVIRONMENT` | Environment name | development |
+| `ANTHROPIC_API_KEY` | Claude API key (for chat_test.py) | - |
 
 ## Development
 
-### Adding New Tools
+### Adding New Financial Tools
 
-1. Create a new async function decorated with `@mcp.tool()`
-2. Add comprehensive docstring with parameters and return values
-3. Implement error handling and logging
-4. Update this README with tool documentation
-5. Add tests in `test_client.py`
+1. Define an async function with proper type hints
+2. Add the `@mcp.tool()` decorator
+3. Include comprehensive docstring with parameters and examples
+4. Implement error handling and logging
+5. Update this README with tool documentation
+6. Add tests in `test_client.py`
 
 **Example:**
 ```python
 @mcp.tool()
-async def your_new_tool(param: str) -> dict:
+async def get_company_overview(symbol: str) -> dict:
     """
-    Description of your tool.
+    Get fundamental company data and financial ratios.
 
     Args:
-        param: Description of parameter
+        symbol: Stock ticker symbol
 
     Returns:
-        Description of return value
+        Company overview including sector, market cap, P/E ratio, etc.
     """
     # Implementation here
-    return {"result": "value"}
+    return {"symbol": symbol, "data": ...}
 ```
 
 ### Testing
 
-Run the test client to validate all tools:
+Run the automated test suite:
 ```bash
 python test_client.py
 ```
 
-For specific tool testing, modify `test_client.py` as needed.
+For interactive testing with Claude AI:
+```bash
+python chat_test.py
+```
 
 ## Deployment
 
@@ -210,42 +302,55 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions on deploying to Goo
 
 This script automates the deployment process to GCP.
 
-## API Documentation
+## API Rate Limits
 
-### Weather Codes
+**Alpha Vantage Free Tier:**
+- 25 API requests per day
+- 5 API requests per minute
 
-The server uses WMO (World Meteorological Organization) weather codes:
+For production use, consider upgrading to a premium Alpha Vantage plan.
 
-| Code | Condition |
-|------|-----------|
-| 0 | Clear sky |
-| 1-3 | Mainly clear to overcast |
-| 45-48 | Fog |
-| 51-55 | Drizzle |
-| 61-65 | Rain |
-| 71-77 | Snow |
-| 80-82 | Rain showers |
-| 85-86 | Snow showers |
-| 95-99 | Thunderstorm |
+## Use Cases
+
+### Algorithmic Trading
+- Real-time market data for trading algorithms
+- Technical indicators for signal generation
+- Historical data for backtesting strategies
+
+### Portfolio Management
+- Multi-asset portfolio tracking
+- Real-time P&L calculations
+- Risk analysis with technical indicators
+
+### Market Research
+- Historical price analysis
+- Trend identification with SMA/EMA
+- Momentum analysis with RSI
+
+### Financial Applications
+- Stock screeners
+- Trading dashboards
+- Investment analysis tools
+- Market data APIs for fintech startups
 
 ## Troubleshooting
 
 ### Common Issues
+
+**API Key Errors:**
+- Verify `ALPHA_VANTAGE_API_KEY` is set in `.env`
+- Check that your API key is valid
+- Ensure you haven't exceeded rate limits
 
 **Server won't start:**
 - Verify Python version: `python --version` (should be 3.11+)
 - Check dependencies: `pip install -r requirements.txt`
 - Verify .env configuration
 
-**City not found:**
-- Check spelling and try different formats
-- Try including country name: "Paris, France"
-- Use official city names
-
-**API errors:**
-- Check internet connection
-- Verify no firewall blocking Open-Meteo API
-- Check server logs for detailed error messages
+**Invalid Symbol Errors:**
+- Use correct ticker symbols (e.g., "AAPL" not "Apple")
+- Check that the symbol is traded on a supported exchange
+- Verify market hours for real-time data
 
 ## Contributing
 
@@ -260,8 +365,9 @@ Contributions are welcome! Please:
 
 - [FastMCP Documentation](https://gofastmcp.com/getting-started/welcome)
 - [FastMCP Quickstart](https://gofastmcp.com/getting-started/quickstart)
-- [Open-Meteo API](https://open-meteo.com/)
+- [Alpha Vantage API Documentation](https://www.alphavantage.co/documentation/)
 - [MCP Protocol Specification](https://modelcontextprotocol.io/)
+- [Technical Analysis Fundamentals](https://www.investopedia.com/technical-analysis-4689657)
 
 ## License
 
@@ -272,27 +378,33 @@ This project is licensed under the MIT License. See LICENSE file for details.
 For issues, questions, or contributions:
 - Open an issue on GitHub
 - Check existing documentation
-- Review FastMCP documentation
+- Review FastMCP and Alpha Vantage documentation
 
 ## Roadmap
 
 ### Upcoming Features
 
-- Additional weather tools (forecasts, historical data)
-- Financial market data integration
-- Stock price lookup tools
-- Currency conversion tools
-- Economic indicator tools
-- News and sentiment analysis
-- Custom alerts and notifications
+- **Additional Technical Indicators**: EMA, MACD, Bollinger Bands, Stochastic Oscillator
+- **Company Fundamentals**: Earnings, balance sheets, income statements
+- **Options Data**: Real-time options chains and Greeks
+- **News Sentiment**: Financial news and sentiment analysis
+- **Sector Performance**: Industry and sector analytics
+- **Screeners**: Custom stock screening capabilities
+- **Backtesting Tools**: Historical strategy testing utilities
+- **Risk Metrics**: VaR, Sharpe ratio, beta calculations
+- **Multi-Exchange Support**: International market data
+- **WebSocket Streaming**: Real-time data feeds
 
 ## Acknowledgments
 
 - Built with [FastMCP 2.0](https://gofastmcp.com/)
-- Weather data from [Open-Meteo](https://open-meteo.com/)
+- Financial data from [Alpha Vantage](https://www.alphavantage.co/)
+- Weather data from [Open-Meteo](https://open-meteo.com/) (utility example)
 - Deployed on Google Cloud Platform
+- Interactive testing powered by Anthropic's Claude AI
 
 ---
 
-**Version:** 1.0.0
+**Version:** 2.0.0
 **Last Updated:** 2025-11-02
+**Primary Focus:** Financial Technology & Market Data
