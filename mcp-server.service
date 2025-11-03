@@ -1,6 +1,6 @@
 [Unit]
 Description=MCP-FinTechCo Server
-Documentation=https://github.com/YOUR-USERNAME/MCP-FinTechCo
+Documentation=https://github.com/Brett777/MCP-FinTechCo
 After=network.target network-online.target
 Wants=network-online.target
 

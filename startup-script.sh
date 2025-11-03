@@ -12,7 +12,7 @@ set -e  # Exit on error
 set -u  # Exit on undefined variable
 
 # Configuration
-REPO_URL="https://github.com/YOUR-USERNAME/MCP-FinTechCo.git"
+REPO_URL="https://github.com/Brett777/MCP-FinTechCo.git"
 INSTALL_DIR="/opt/MCP-FinTechCo"
 PYTHON_VERSION="3.11"
 LOG_FILE="/var/log/mcp-startup.log"
