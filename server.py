@@ -178,7 +178,7 @@ async def get_city_weather_impl(city: str) -> dict:
         raise Exception(f"An error occurred: {str(e)}")
 
 
-@mcp.tool()
+@mcp.tool(tags=["utility", "weather"])
 async def get_city_weather(city: str) -> dict:
     """
     Get current weather information for a specified city.
@@ -275,7 +275,7 @@ async def get_stock_quote_impl(symbol: str) -> dict:
         raise
 
 
-@mcp.tool()
+@mcp.tool(tags=["alpha-vantage", "stock", "market-data", "quote"])
 async def get_stock_quote(symbol: str) -> dict:
     """
     Get real-time stock quote for a given symbol.
@@ -366,7 +366,7 @@ async def get_stock_daily_impl(symbol: str, outputsize: str = "compact") -> dict
         raise
 
 
-@mcp.tool()
+@mcp.tool(tags=["alpha-vantage", "stock", "market-data", "time-series"])
 async def get_stock_daily(symbol: str, outputsize: str = "compact") -> dict:
     """
     Get daily time series data for a stock.
@@ -448,7 +448,7 @@ async def get_sma_impl(symbol: str, interval: str = "daily", time_period: int = 
         raise
 
 
-@mcp.tool()
+@mcp.tool(tags=["alpha-vantage", "technical-indicator", "analysis", "sma"])
 async def get_sma(symbol: str, interval: str = "daily", time_period: int = 20, series_type: str = "close") -> dict:
     """
     Get Simple Moving Average (SMA) technical indicator.
@@ -523,7 +523,7 @@ async def get_rsi_impl(symbol: str, interval: str = "daily", time_period: int = 
         raise
 
 
-@mcp.tool()
+@mcp.tool(tags=["alpha-vantage", "technical-indicator", "analysis", "rsi"])
 async def get_rsi(symbol: str, interval: str = "daily", time_period: int = 14, series_type: str = "close") -> dict:
     """
     Get Relative Strength Index (RSI) technical indicator.
@@ -592,7 +592,7 @@ async def get_fx_rate_impl(from_currency: str, to_currency: str) -> dict:
         raise
 
 
-@mcp.tool()
+@mcp.tool(tags=["alpha-vantage", "forex", "currency", "exchange-rate"])
 async def get_fx_rate(from_currency: str, to_currency: str) -> dict:
     """
     Get real-time foreign exchange (FX) rate.
@@ -661,7 +661,7 @@ async def get_crypto_rate_impl(symbol: str, market: str = "USD") -> dict:
         raise
 
 
-@mcp.tool()
+@mcp.tool(tags=["alpha-vantage", "crypto", "cryptocurrency", "exchange-rate"])
 async def get_crypto_rate(symbol: str, market: str = "USD") -> dict:
     """
     Get real-time cryptocurrency exchange rate.
@@ -740,7 +740,7 @@ async def search_fred_series_impl(search_text: str, search_type: str = "full_tex
         raise
 
 
-@mcp.tool()
+@mcp.tool(tags=["fred", "economic-data", "search", "discovery"])
 async def search_fred_series(search_text: str, search_type: str = "full_text", limit: int = 50) -> dict:
     """
     Search for economic indicators in FRED by keyword.
@@ -831,7 +831,7 @@ async def get_economic_indicator_impl(series_id: str, start_date: Optional[str] 
         raise
 
 
-@mcp.tool()
+@mcp.tool(tags=["fred", "economic-data", "indicator", "time-series"])
 async def get_economic_indicator(series_id: str, start_date: Optional[str] = None, end_date: Optional[str] = None) -> dict:
     """
     Get historical time series data for an economic indicator.
@@ -913,7 +913,7 @@ async def get_series_metadata_impl(series_id: str) -> dict:
         raise
 
 
-@mcp.tool()
+@mcp.tool(tags=["fred", "economic-data", "metadata"])
 async def get_series_metadata(series_id: str) -> dict:
     """
     Get detailed metadata for a FRED economic series.
@@ -1000,7 +1000,7 @@ async def get_fred_releases_impl(limit: int = 50) -> dict:
         raise
 
 
-@mcp.tool()
+@mcp.tool(tags=["fred", "economic-data", "releases"])
 async def get_fred_releases(limit: int = 50) -> dict:
     """
     Get list of available FRED economic data releases.
@@ -1100,7 +1100,7 @@ async def get_category_series_impl(category_id: int, limit: int = 50) -> dict:
         raise
 
 
-@mcp.tool()
+@mcp.tool(tags=["fred", "economic-data", "category", "discovery"])
 async def get_category_series(category_id: int, limit: int = 50) -> dict:
     """
     Get all economic series within a specific FRED category.
@@ -1207,7 +1207,7 @@ async def get_series_observations_impl(
         raise
 
 
-@mcp.tool()
+@mcp.tool(tags=["fred", "economic-data", "indicator", "time-series", "advanced"])
 async def get_series_observations(
     series_id: str,
     start_date: Optional[str] = None,
