@@ -1,10 +1,14 @@
 # MCP-FinTechCo Server
 
-A production-ready Modular Command Processor (MCP) server built with FastMCP 2.0, providing comprehensive financial technology tools and data services.
+A production-ready Model Context Protocol (MCP) server built with FastMCP 2.0, providing comprehensive financial technology tools and data services.
 
 ## Overview
 
-MCP-FinTechCo is a scalable FinTech-focused MCP server designed for real-world financial applications, algorithmic trading, portfolio management, and market analysis. Built on FastMCP 2.0, it provides robust access to real-time market data, technical indicators, foreign exchange rates, and cryptocurrency information through the industry-standard Alpha Vantage API.
+MCP-FinTechCo is a scalable FinTech-focused MCP server designed for real-world financial applications, algorithmic trading, portfolio management, and market analysis.
+
+**What is MCP?** The Model Context Protocol is a standardized way to connect large language models (LLMs) to external tools and data sources. Think of it as "the USB-C port for AI" - it provides a uniform interface for AI applications to access financial data, execute functions, and interact with real-time market information.
+
+Built on FastMCP 2.0, this server provides robust access to real-time market data, technical indicators, foreign exchange rates, and cryptocurrency information through the industry-standard Alpha Vantage API.
 
 ### Key Features
 

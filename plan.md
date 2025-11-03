@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This project implements a Modular Command Processor (MCP) server using FastMCP 2.0. The server will be deployed on Google Cloud Platform (GCP) and will initially provide weather information tools, with plans for rapid expansion to support additional financial technology capabilities.
+This project implements a Model Context Protocol (MCP) server using FastMCP 2.0. MCP is a standardized protocol for connecting large language models to external tools and data sources. The server is deployed on Google Cloud Platform (GCP) and provides comprehensive financial technology capabilities including real-time market data, technical indicators, foreign exchange rates, and cryptocurrency pricing.
 
 ## Technical Specifications
 
