@@ -1,0 +1,39 @@
+[Unit]
+Description=MCP-FinTechCo Server
+Documentation=https://github.com/YOUR-USERNAME/MCP-FinTechCo
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/MCP-FinTechCo
+Environment="PATH=/opt/MCP-FinTechCo/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=/opt/MCP-FinTechCo/venv/bin/python server.py
+
+# Restart policy
+Restart=always
+RestartSec=10
+StartLimitInterval=200
+StartLimitBurst=5
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mcp-server
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/MCP-FinTechCo
+
+# Resource limits
+LimitNOFILE=65536
+MemoryLimit=1G
+CPUQuota=80%
+
+[Install]
+WantedBy=multi-user.target
