@@ -65,13 +65,12 @@ class MCPChatInterface:
         self.client = Anthropic(api_key=self.anthropic_api_key)
         self.conversation_history: List[Dict[str, Any]] = []
 
-        # Define available MCP tools with tags for discoverability
+        # Define available MCP tools
         self.mcp_tools = [
             # ===== STOCK MARKET TOOLS =====
             {
                 "name": "get_stock_quote",
                 "description": "Get real-time stock quote for any symbol including price, volume, change, and trading data.",
-                "tags": ["fintech", "market", "stock", "alpha-vantage", "real-time"],
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -86,7 +85,6 @@ class MCPChatInterface:
             {
                 "name": "get_stock_daily",
                 "description": "Get daily time series data for a stock with OHLCV (Open, High, Low, Close, Volume) values.",
-                "tags": ["fintech", "market", "stock", "alpha-vantage", "historical-data", "technical-analysis"],
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -107,7 +105,6 @@ class MCPChatInterface:
             {
                 "name": "get_sma",
                 "description": "Get Simple Moving Average (SMA) technical indicator for trend analysis.",
-                "tags": ["fintech", "market", "technical-indicator", "alpha-vantage", "trend-analysis"],
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -122,7 +119,6 @@ class MCPChatInterface:
             {
                 "name": "get_rsi",
                 "description": "Get Relative Strength Index (RSI) indicator measuring momentum (0-100, >70 overbought, <30 oversold).",
-                "tags": ["fintech", "market", "technical-indicator", "alpha-vantage", "momentum"],
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -138,7 +134,6 @@ class MCPChatInterface:
             {
                 "name": "get_fx_rate",
                 "description": "Get real-time foreign exchange rate between two currencies.",
-                "tags": ["fintech", "currency", "forex", "alpha-vantage", "real-time"],
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -152,7 +147,6 @@ class MCPChatInterface:
             {
                 "name": "get_crypto_rate",
                 "description": "Get real-time cryptocurrency exchange rate.",
-                "tags": ["fintech", "crypto", "digital-asset", "alpha-vantage", "real-time"],
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -166,7 +160,6 @@ class MCPChatInterface:
             {
                 "name": "get_city_weather",
                 "description": "Get current weather information for a specified city. Returns temperature, humidity, wind speed, and weather conditions.",
-                "tags": ["weather", "utility", "open-meteo"],
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -182,7 +175,6 @@ class MCPChatInterface:
             {
                 "name": "search_fred_series",
                 "description": "Search for economic indicators in FRED by keyword. Discover available economic time series matching your search criteria.",
-                "tags": ["economic-data", "fred", "economic-indicator", "search", "discoverability"],
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -196,7 +188,6 @@ class MCPChatInterface:
             {
                 "name": "get_fred_releases",
                 "description": "Get list of available FRED economic data releases like CPI, Employment, GDP, etc.",
-                "tags": ["economic-data", "fred", "releases", "discoverability"],
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -209,7 +200,6 @@ class MCPChatInterface:
             {
                 "name": "get_economic_indicator",
                 "description": "Get historical time series data for a specific economic indicator (UNRATE, GDP, CPI, etc.).",
-                "tags": ["economic-data", "fred", "economic-indicator", "time-series", "historical-data"],
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -223,7 +213,6 @@ class MCPChatInterface:
             {
                 "name": "get_series_metadata",
                 "description": "Get detailed metadata for a FRED economic series including title, units, frequency, and notes.",
-                "tags": ["economic-data", "fred", "metadata", "economic-indicator"],
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -235,7 +224,6 @@ class MCPChatInterface:
             {
                 "name": "get_category_series",
                 "description": "Get all economic series within a FRED category (Employment, Production, Income, Money, Banking, etc.).",
-                "tags": ["economic-data", "fred", "category", "economic-indicator", "discoverability"],
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -248,7 +236,6 @@ class MCPChatInterface:
             {
                 "name": "get_series_observations",
                 "description": "Get detailed observations for a FRED series with date filtering and unit transformations (change, percent change, log, etc.).",
-                "tags": ["economic-data", "fred", "economic-indicator", "time-series", "advanced-analysis"],
                 "input_schema": {
                     "type": "object",
                     "properties": {
